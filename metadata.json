@@ -1,5 +1,5 @@
 {
   "name": "PrepMaster AI",
   "description": "A comprehensive learning and interview mock test platform powered by Gemini AI.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["microphone", "camera"]
 }
