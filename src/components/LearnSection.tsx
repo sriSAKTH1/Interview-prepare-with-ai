@@ -46,11 +46,12 @@ import {
 } from 'lucide-react';
 import { LearnTopic, LearnMode } from '../types';
 
-export function LearnSection({ topic, setTopic, mode, setMode }: { 
+export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: { 
   topic: LearnTopic, 
   setTopic: (t: LearnTopic) => void,
   mode: LearnMode,
-  setMode: (m: LearnMode) => void
+  setMode: (m: LearnMode) => void,
+  careerPath?: string
 }) {
   const [learnStep, setLearnStep] = useState<'overview' | 'curriculum'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -139,8 +140,10 @@ export function LearnSection({ topic, setTopic, mode, setMode }: {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="mb-12">
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">Learning Center</h1>
-          <p className="text-slate-500 text-lg">Choose a path and start your journey to mastery.</p>
+          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Learning Center</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-lg">
+            Tailored learning for <span className="text-indigo-600 dark:text-indigo-400 font-bold">{careerPath || 'your career'}</span>.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

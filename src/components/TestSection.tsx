@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ClipboardCheck, 
@@ -54,25 +54,118 @@ interface Question {
   options: string[];
   correctAnswer: number;
   explanation: string;
+  distractorAnalysis: string[];
   category?: 'Aptitude' | 'Technical';
 }
 
-export function TestSection({ onComplete, initialMode, initialCompany, initialRole }: { 
+const APTITUDE_CATEGORIES = {
+  'Numerical': ['Arithmetic', 'Algebra', 'Geometry', 'Data Interpretation', 'Number System', 'Profit & Loss', 'Time & Work', 'Speed & Distance'],
+  'Reasoning': ['Logical Reasoning', 'Verbal Reasoning', 'Non-Verbal Reasoning', 'Analytical Reasoning', 'Syllogism', 'Blood Relations', 'Coding-Decoding', 'Series'],
+  'Verbal': ['Reading Comprehension', 'Grammar', 'Vocabulary', 'Synonyms & Antonyms', 'Sentence Correction', 'Para Jumbles', 'Idioms & Phrases']
+};
+
+export function TestSection({ onComplete, initialMode, initialCompany, initialRole, initialExamName, initialContext }: { 
   onComplete: (result: TestResult) => void,
   initialMode?: TestMode,
   initialCompany?: string,
-  initialRole?: string
+  initialRole?: string,
+  initialExamName?: string,
+  initialContext?: string
 }) {
   const [mode, setMode] = useState<TestMode>(initialMode || 'overview');
-  const [testStep, setTestStep] = useState<'overview' | 'difficulty' | 'role-selection' | 'topic-selection' | 'company-config' | 'generating' | 'pre-test-summary' | 'rules' | 'active' | 'results' | 'coding-active' | 'coding-results'>('overview');
-  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
-  const [companyName, setCompanyName] = useState<string>(initialCompany || '');
-  const [companyRole, setCompanyRole] = useState<string>(initialRole || '');
-  const [jobDescription, setJobDescription] = useState<string>('');
-  const [examName, setExamName] = useState<string>('');
-  const [experienceLevel, setExperienceLevel] = useState<'Fresher' | '1+ Year'>('Fresher');
-  const [selectedRole, setSelectedRole] = useState<string>('');
-  const [selectedTopic, setSelectedTopic] = useState<string>('');
+  const [testStep, setTestStep] = useState<'overview' | 'difficulty' | 'role-selection' | 'topic-selection' | 'company-config' | 'generating' | 'pre-test-summary' | 'rules' | 'active' | 'results' | 'coding-active' | 'coding-results' | 'aptitude-config'>(initialMode ? 'generating' : 'overview');
+  const [aptitudeSubMode, setAptitudeSubMode] = useState<'custom' | 'random' | 'company'>('random');
+  const [selectedAptitudeCategories, setSelectedAptitudeCategories] = useState<string[]>([]);
+  const [selectedAptitudeTopics, setSelectedAptitudeTopics] = useState<string[]>([]);
+  const [aptitudeQuestionCount, setAptitudeQuestionCount] = useState<number>(20);
+  const [aptitudeCompany, setAptitudeCompany] = useState<string>('');
+  const [aptitudeExam, setAptitudeExam] = useState<string>('');
+  const [aptitudeContext, setAptitudeContext] = useState<string>('');
+  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('test_difficulty') as any) || 'Easy';
+    }
+    return 'Easy';
+  });
+  const [companyName, setCompanyName] = useState<string>(() => {
+    if (initialCompany) return initialCompany;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('test_companyName') || '';
+    }
+    return '';
+  });
+  const [companyRole, setCompanyRole] = useState<string>(() => {
+    if (initialRole) return initialRole;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('test_companyRole') || '';
+    }
+    return '';
+  });
+  const [jobDescription, setJobDescription] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('test_jobDescription') || '';
+    }
+    return '';
+  });
+  const [examName, setExamName] = useState<string>(() => {
+    if (initialExamName) return initialExamName;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('test_examName') || '';
+    }
+    return '';
+  });
+  const [prepContext, setPrepContext] = useState<string>(initialContext || '');
+  const [experienceLevel, setExperienceLevel] = useState<'Fresher' | '1+ Year'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('test_experienceLevel') as any) || 'Fresher';
+    }
+    return 'Fresher';
+  });
+  const [selectedRole, setSelectedRole] = useState<string>(() => {
+    if (initialRole) return initialRole;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('test_selectedRole') || '';
+    }
+    return '';
+  });
+  const [selectedTopic, setSelectedTopic] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('test_selectedTopic') || '';
+    }
+    return '';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('test_difficulty', difficulty);
+  }, [difficulty]);
+
+  useEffect(() => {
+    if (!initialCompany) localStorage.setItem('test_companyName', companyName);
+  }, [companyName, initialCompany]);
+
+  useEffect(() => {
+    if (!initialRole) localStorage.setItem('test_companyRole', companyRole);
+  }, [companyRole, initialRole]);
+
+  useEffect(() => {
+    localStorage.setItem('test_jobDescription', jobDescription);
+  }, [jobDescription]);
+
+  useEffect(() => {
+    if (!initialExamName) localStorage.setItem('test_examName', examName);
+  }, [examName, initialExamName]);
+
+  useEffect(() => {
+    localStorage.setItem('test_experienceLevel', experienceLevel);
+  }, [experienceLevel]);
+
+  useEffect(() => {
+    if (!initialRole) localStorage.setItem('test_selectedRole', selectedRole);
+  }, [selectedRole, initialRole]);
+
+  useEffect(() => {
+    localStorage.setItem('test_selectedTopic', selectedTopic);
+  }, [selectedTopic]);
   const [customRole, setCustomRole] = useState<string>('');
 
   // Test State
@@ -88,6 +181,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
   const [codingProblem, setCodingProblem] = useState<any>(null);
   const [userCode, setUserCode] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<any>(null);
   const [questionCount, setQuestionCount] = useState<number>(10);
   const [customQuestionCount, setCustomQuestionCount] = useState<string>('');
@@ -96,26 +190,131 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
     roleExpectations?: string;
     keyTopics?: string[];
     preparationTips?: string[];
+    deepAnalysis?: string;
+    interviewPattern?: string;
   } | null>(null);
   const [leftTab, setLeftTab] = useState<'description' | 'editorial' | 'solutions' | 'submissions'>('description');
   const [bottomTab, setBottomTab] = useState<'testcase' | 'testresult'>('testcase');
   const [selectedCase, setSelectedCase] = useState(0);
+  const [isConsoleOpen, setIsConsoleOpen] = useState(true);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
 
   const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'UI/UX Designer'];
   const topics = ['Random', 'Arrays & Hashing', 'Two Pointers', 'Sliding Window', 'Stack', 'Binary Search', 'Linked List', 'Trees', 'Graphs', 'Dynamic Programming', 'Bit Manipulation'];
 
-  const generateQuestions = async (overrideMode?: TestMode, overrideCompany?: string, overrideRole?: string) => {
+  useEffect(() => {
+    if (initialMode) {
+      generateQuestions(initialMode, initialCompany, initialRole, initialExamName, initialContext);
+    }
+  }, [initialMode]);
+
+  const generateQuestions = async (overrideMode?: TestMode, overrideCompany?: string, overrideRole?: string, overrideExamName?: string, overrideContext?: string) => {
     const activeMode = overrideMode || mode;
     const activeCompany = overrideCompany || companyName;
     const activeRole = overrideRole || companyRole;
+    const activeExamName = overrideExamName || examName;
+    const activePrepContext = overrideContext || prepContext;
 
     setIsGenerating(true);
     setTestStep('generating');
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       
+      if (activeMode === 'aptitude') {
+        let aptitudeContextStr = "";
+        let qCount = aptitudeQuestionCount;
+
+        if (aptitudeSubMode === 'random') {
+          aptitudeContextStr = "Random mix of Numerical, Reasoning, and Verbal aptitude questions.";
+          qCount = 20;
+        } else if (aptitudeSubMode === 'custom') {
+          aptitudeContextStr = `Custom selection. Categories: ${selectedAptitudeCategories.join(', ')}. Topics: ${selectedAptitudeTopics.join(', ')}.`;
+        } else if (aptitudeSubMode === 'company') {
+          aptitudeContextStr = `Company Specific Aptitude. Company: ${aptitudeCompany}, Exam: ${aptitudeExam}. ${aptitudeContext ? `Additional Context: ${aptitudeContext}` : ''}`;
+          qCount = 20;
+        }
+
+        const prompt = `Generate ${qCount} high-quality multiple choice questions for an Aptitude Assessment.
+        Context: ${aptitudeContextStr}
+        Difficulty: ${difficulty}
+        
+        IMPORTANT: For company-specific requests, use Google Search to find actual previous year patterns for ${aptitudeCompany} ${aptitudeExam}.
+        
+        Return the response as a JSON object with the following schema:
+        {
+          "insights": {
+            "roleExpectations": "string",
+            "keyTopics": ["string"],
+            "preparationTips": ["string"],
+            "deepAnalysis": "string",
+            "interviewPattern": "string"
+          },
+          "questions": [
+            {
+              "id": "string",
+              "question": "string",
+              "options": ["string", "string", "string", "string"],
+              "correctAnswer": number (0-3),
+              "explanation": "string",
+              "distractorAnalysis": ["string", "string", "string", "string"]
+            }
+          ]
+        }`;
+
+        const result = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            responseMimeType: "application/json",
+            tools: aptitudeSubMode === 'company' ? [{ googleSearch: {} }] : [],
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                insights: {
+                  type: Type.OBJECT,
+                  properties: {
+                    roleExpectations: { type: Type.STRING },
+                    keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    preparationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    deepAnalysis: { type: Type.STRING },
+                    interviewPattern: { type: Type.STRING }
+                  },
+                  required: ["roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
+                },
+                questions: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      id: { type: Type.STRING },
+                      question: { type: Type.STRING },
+                      options: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: 4, maxItems: 4 },
+                      correctAnswer: { type: Type.INTEGER },
+                      explanation: { type: Type.STRING },
+                      distractorAnalysis: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ["id", "question", "options", "correctAnswer", "explanation", "distractorAnalysis"]
+                  }
+                }
+              },
+              required: ["insights", "questions"]
+            }
+          }
+        });
+
+        const data = JSON.parse(result.text);
+        setQuestions(data.questions);
+        setTestInsights(data.insights);
+        setUserAnswers(new Array(data.questions.length).fill(-1));
+        setTestStep('pre-test-summary');
+        setIsGenerating(false);
+        return;
+      }
+
       if (activeMode === 'comprehensive-company-test') {
-        const prompt = `Generate a comprehensive mock test for a technical interview at ${activeCompany} for the role of ${activeRole}.
+        const prompt = `Generate a comprehensive mock test for ${activeExamName || activeCompany} for the role of ${activeRole}.
+        ${activePrepContext ? `Context: ${activePrepContext}` : ''}
+        
         The test should have three sections:
         1. Aptitude questions (MCQ)
         2. Technical MCQs
@@ -124,19 +323,39 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
         Difficulty: ${difficulty}
         Level: ${experienceLevel}
         
+        IMPORTANT: Use Google Search to find actual previous year questions or very similar patterns for ${activeExamName || activeCompany}.
+        
+        Also provide a deep analysis of the company's interview process and the typical interview pattern for this role.
+        
         Return the response as a JSON object with the following schema:
         {
           "insights": {
             "companyInfo": "string",
             "roleExpectations": "string",
             "keyTopics": ["string"],
-            "preparationTips": ["string"]
+            "preparationTips": ["string"],
+            "deepAnalysis": "string (detailed analysis of company culture and interview style)",
+            "interviewPattern": "string (step-by-step interview process)"
           },
           "aptitudeQuestions": [
-            { "id": "string", "question": "string", "options": ["string", "string", "string", "string"], "correctAnswer": number, "explanation": "string" }
+            { 
+              "id": "string", 
+              "question": "string", 
+              "options": ["string", "string", "string", "string"], 
+              "correctAnswer": number, 
+              "explanation": "string",
+              "distractorAnalysis": ["string", "string", "string", "string"]
+            }
           ],
           "technicalQuestions": [
-            { "id": "string", "question": "string", "options": ["string", "string", "string", "string"], "correctAnswer": number, "explanation": "string" }
+            { 
+              "id": "string", 
+              "question": "string", 
+              "options": ["string", "string", "string", "string"], 
+              "correctAnswer": number, 
+              "explanation": "string",
+              "distractorAnalysis": ["string", "string", "string", "string"]
+            }
           ],
           "codingProblem": {
             "title": "string",
@@ -153,6 +372,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           config: {
             responseMimeType: "application/json",
+            tools: [{ googleSearch: {} }],
             responseSchema: {
               type: Type.OBJECT,
               properties: {
@@ -162,9 +382,11 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                     companyInfo: { type: Type.STRING },
                     roleExpectations: { type: Type.STRING },
                     keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    preparationTips: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    preparationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    deepAnalysis: { type: Type.STRING },
+                    interviewPattern: { type: Type.STRING }
                   },
-                  required: ["roleExpectations", "keyTopics", "preparationTips"]
+                  required: ["roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
                 },
                 aptitudeQuestions: {
                   type: Type.ARRAY,
@@ -175,9 +397,10 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                       question: { type: Type.STRING },
                       options: { type: Type.ARRAY, items: { type: Type.STRING } },
                       correctAnswer: { type: Type.INTEGER },
-                      explanation: { type: Type.STRING }
+                      explanation: { type: Type.STRING },
+                      distractorAnalysis: { type: Type.ARRAY, items: { type: Type.STRING } }
                     },
-                    required: ["id", "question", "options", "correctAnswer", "explanation"]
+                    required: ["id", "question", "options", "correctAnswer", "explanation", "distractorAnalysis"]
                   }
                 },
                 technicalQuestions: {
@@ -189,9 +412,10 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                       question: { type: Type.STRING },
                       options: { type: Type.ARRAY, items: { type: Type.STRING } },
                       correctAnswer: { type: Type.INTEGER },
-                      explanation: { type: Type.STRING }
+                      explanation: { type: Type.STRING },
+                      distractorAnalysis: { type: Type.ARRAY, items: { type: Type.STRING } }
                     },
-                    required: ["id", "question", "options", "correctAnswer", "explanation"]
+                    required: ["id", "question", "options", "correctAnswer", "explanation", "distractorAnalysis"]
                   }
                 },
                 codingProblem: {
@@ -342,7 +566,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       let context = "";
       if (activeMode === 'mcq-dsa') context = `Data Structures and Algorithms topic: ${selectedTopic === 'Random' ? 'Mixed DSA topics' : selectedTopic}`;
       else if (activeMode === 'mcq-role') context = `Role: ${selectedRole === 'Custom' ? customRole : selectedRole}`;
-      else if (activeMode === 'company-round') context = `Company: ${activeCompany}, Role: ${activeRole}, Level: ${experienceLevel}${examName ? `, Exam/Interview: ${examName}` : ''}${jobDescription ? `, Job Description: ${jobDescription}` : ''}`;
+      else if (activeMode === 'company-round') context = `Company: ${activeCompany}, Role: ${activeRole}, Level: ${experienceLevel}${activeExamName ? `, Exam/Interview: ${activeExamName}` : ''}${jobDescription ? `, Job Description: ${jobDescription}` : ''}${activePrepContext ? `. Additional Context: ${activePrepContext}` : ''}`;
       else if (activeMode === 'coding-topic') context = `Coding challenge on: ${selectedTopic}`;
       else context = "General technical interview questions";
 
@@ -352,9 +576,12 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       Context: ${context}
       Difficulty: ${difficulty}
       
+      IMPORTANT: Use Google Search to find actual previous year questions or very similar patterns for ${activeExamName || activeCompany}.
+      
       ${(activeMode === 'company-round' || activeMode === 'mcq-role') ? 'IMPORTANT: Include a significant number of questions on fundamental concepts, core principles, and foundational knowledge relevant to this specific company and role.' : ''}
       
-      Also provide brief insights about the ${activeMode === 'company-round' ? 'company and role' : 'role and topic'}.
+      Also provide deep insights about the ${activeMode === 'company-round' ? 'company and role' : 'role and topic'}.
+      If this is a company-specific round, include a detailed analysis of their interview process and typical patterns.
       
       Return the response as a JSON object with the following schema:
       {
@@ -362,7 +589,9 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
           "companyInfo": "string (brief info about company, only if company-round)",
           "roleExpectations": "string (what is expected for this role/topic)",
           "keyTopics": ["string", "string"],
-          "preparationTips": ["string", "string"]
+          "preparationTips": ["string", "string"],
+          "deepAnalysis": "string (detailed analysis of company culture and interview style)",
+          "interviewPattern": "string (step-by-step interview process)"
         },
         "questions": [
           {
@@ -370,7 +599,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
             "question": "string",
             "options": ["string", "string", "string", "string"],
             "correctAnswer": number (0-3),
-            "explanation": "string"
+            "explanation": "string",
+            "distractorAnalysis": ["string", "string", "string", "string"]
           }
         ]
       }`;
@@ -380,6 +610,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }],
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -389,9 +620,11 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                   companyInfo: { type: Type.STRING },
                   roleExpectations: { type: Type.STRING },
                   keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  preparationTips: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  preparationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  deepAnalysis: { type: Type.STRING },
+                  interviewPattern: { type: Type.STRING }
                 },
-                required: ["roleExpectations", "keyTopics", "preparationTips"]
+                required: ["roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
               },
               questions: {
                 type: Type.ARRAY,
@@ -407,9 +640,10 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                       maxItems: 4
                     },
                     correctAnswer: { type: Type.INTEGER },
-                    explanation: { type: Type.STRING }
+                    explanation: { type: Type.STRING },
+                    distractorAnalysis: { type: Type.ARRAY, items: { type: Type.STRING } }
                   },
-                  required: ["id", "question", "options", "correctAnswer", "explanation"]
+                  required: ["id", "question", "options", "correctAnswer", "explanation", "distractorAnalysis"]
                 }
               }
             },
@@ -461,7 +695,13 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
             question: 'What is the time complexity of searching an element in a balanced Binary Search Tree?',
             options: ['O(1)', 'O(n)', 'O(log n)', 'O(n log n)'],
             correctAnswer: 2,
-            explanation: 'In a balanced BST, each comparison halves the search space, leading to logarithmic time complexity.'
+            explanation: 'In a balanced BST, each comparison halves the search space, leading to logarithmic time complexity.',
+            distractorAnalysis: [
+              'O(1) is constant time, which is only possible with direct access like an array index or hash map.',
+              'O(n) is linear time, characteristic of searching in an unsorted array or linked list.',
+              'O(log n) is correct as the search space is halved at each step.',
+              'O(n log n) is typically the complexity of efficient sorting algorithms, not searching in a BST.'
+            ]
           }
         ]);
         setUserAnswers([-1]);
@@ -483,23 +723,28 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
     }
   }, [initialMode, initialCompany, initialRole]);
 
-  const submitCode = async () => {
-    setIsSubmitting(true);
+  const handleRunCode = async () => {
+    setIsRunning(true);
+    setSubmissionResult(null);
+    setBottomTab('testresult');
+    setIsConsoleOpen(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-      const prompt = `Evaluate the following Python code for the problem: "${codingProblem?.title}".
+      const prompt = `Evaluate this Python code for the following problem. 
+      This is a "Run" operation, so only evaluate against the provided example test cases.
       
-      Problem Description: ${codingProblem?.description}
-      User Code:
+      Problem: ${codingProblem?.title}
+      Description: ${codingProblem?.description}
+      Code:
       ${userCode}
       
-      Test Cases to check:
-      ${JSON.stringify(codingProblem?.testCases)}
+      Example Test Cases:
+      ${JSON.stringify(codingProblem?.examples)}
       
-      Return a JSON object with:
+      Return the response as a JSON object with the following schema:
       {
-        "status": "Accepted" | "Wrong Answer" | "Runtime Error",
-        "feedback": "string (concise feedback)",
+        "status": "Accepted" | "Wrong Answer" | "Runtime Error" | "Time Limit Exceeded",
+        "feedback": "string (brief feedback)",
         "testResults": [
           { "input": "string", "expected": "string", "actual": "string", "passed": boolean }
         ]
@@ -513,7 +758,79 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
           responseSchema: {
             type: Type.OBJECT,
             properties: {
-              status: { type: Type.STRING, enum: ["Accepted", "Wrong Answer", "Runtime Error"] },
+              status: { type: Type.STRING },
+              feedback: { type: Type.STRING },
+              testResults: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    input: { type: Type.STRING },
+                    expected: { type: Type.STRING },
+                    actual: { type: Type.STRING },
+                    passed: { type: Type.BOOLEAN }
+                  },
+                  required: ["input", "expected", "actual", "passed"]
+                }
+              }
+            },
+            required: ["status", "feedback", "testResults"]
+          }
+        }
+      });
+
+      const evaluation = JSON.parse(result.text);
+      setSubmissionResult(evaluation);
+    } catch (error) {
+      console.error("Error running code:", error);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const submitCode = async () => {
+    setIsSubmitting(true);
+    setSubmissionResult(null);
+    setBottomTab('testresult');
+    setIsConsoleOpen(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      
+      // Combine examples and test cases for full evaluation
+      const allTestCases = [
+        ...codingProblem!.examples.map(ex => ({ input: ex.input, expected: ex.output })),
+        ...codingProblem!.testCases
+      ];
+
+      const prompt = `Evaluate this Python code for the following problem. 
+      This is a "Submit" operation, so evaluate against ALL provided test cases.
+      
+      Problem: ${codingProblem?.title}
+      Description: ${codingProblem?.description}
+      Code:
+      ${userCode}
+      
+      Test Cases:
+      ${JSON.stringify(allTestCases)}
+      
+      Return the response as a JSON object with the following schema:
+      {
+        "status": "Accepted" | "Wrong Answer" | "Runtime Error" | "Time Limit Exceeded",
+        "feedback": "string (detailed feedback)",
+        "testResults": [
+          { "input": "string", "expected": "string", "actual": "string", "passed": boolean }
+        ]
+      }`;
+
+      const result = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              status: { type: Type.STRING },
               feedback: { type: Type.STRING },
               testResults: {
                 type: Type.ARRAY,
@@ -538,23 +855,44 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       setSubmissionResult(evaluation);
       
       if (evaluation.status === 'Accepted') {
-        onComplete({
-          id: Math.random().toString(36).substr(2, 9),
-          title: `Coding: ${codingProblem?.title}`,
-          score: "100/100",
-          total: 100,
-          correct: 100,
-          time: new Date().toLocaleTimeString(),
-          status: 'Completed',
-          feedback: "Excellent! Your solution passed all test cases.",
-          weaknesses: [],
-          improvements: ["Try optimizing for space complexity"]
-        });
+        // Delay slightly for dramatic effect
+        setTimeout(() => {
+          onComplete({
+            id: Math.random().toString(36).substr(2, 9),
+            title: `Coding: ${codingProblem?.title}`,
+            score: "100/100",
+            total: 100,
+            correct: 100,
+            time: new Date().toLocaleTimeString(),
+            status: 'Completed',
+            feedback: "Excellent! Your solution passed all test cases.",
+            weaknesses: [],
+            improvements: ["Try optimizing for space complexity"]
+          });
+        }, 1500);
       }
     } catch (error) {
       console.error("Error submitting code:", error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = e.currentTarget.selectionStart;
+      const end = e.currentTarget.selectionEnd;
+      const value = e.currentTarget.value;
+      const newValue = value.substring(0, start) + '    ' + value.substring(end);
+      setUserCode(newValue);
+      
+      // Set cursor position after update
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.selectionStart = editorRef.current.selectionEnd = start + 4;
+        }
+      }, 0);
     }
   };
 
@@ -686,16 +1024,28 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       icon: Building2,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50'
+    },
+    { 
+      id: 'aptitude', 
+      title: 'Aptitude Test', 
+      description: 'Master Numerical, Reasoning, and Verbal skills with custom, random, or company-specific aptitude challenges.',
+      icon: Brain,
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50'
     }
   ];
 
   const handleStartTest = (optionId: TestMode) => {
     setMode(optionId);
-    setTestStep('difficulty');
+    if (optionId === 'aptitude') {
+      setTestStep('aptitude-config');
+    } else {
+      setTestStep('difficulty');
+    }
   };
 
   return (
-    <div className={testStep === 'coding-active' ? "w-full h-[calc(100vh-64px)] p-2" : "max-w-6xl mx-auto"}>
+    <div className={(testStep === 'coding-active' || testStep === 'coding-results') ? "w-full h-[calc(100vh-64px)] p-2 overflow-hidden" : "max-w-6xl mx-auto"}>
       <AnimatePresence mode="wait">
         {testStep === 'overview' && (
           <motion.div
@@ -708,7 +1058,9 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Assessment Center</h1>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">Choose a test mode to evaluate and improve your skills.</p>
+                <p className="text-slate-500 dark:text-slate-400 mt-1">
+                  Tailored tests for <span className="text-indigo-600 dark:text-indigo-400 font-bold">{initialRole || 'your career'}</span>.
+                </p>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-sm font-semibold">
                 <Trophy size={18} />
@@ -781,7 +1133,187 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
               >
                 Continue <ArrowRight size={18} />
               </button>
-              <button onClick={() => setTestStep('overview')} className="mt-4 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-sm font-medium">Go Back</button>
+              <button onClick={() => setTestStep(mode === 'aptitude' ? 'aptitude-config' : 'overview')} className="mt-4 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-sm font-medium">Go Back</button>
+            </div>
+          </motion.div>
+        )}
+
+        {testStep === 'aptitude-config' && (
+          <motion.div
+            key="aptitude-config"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="max-w-4xl mx-auto space-y-8 py-12"
+          >
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Configure Aptitude Test</h2>
+              <p className="text-slate-500 dark:text-slate-400">Choose how you want to be assessed.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { id: 'custom', title: 'Custom Selection', description: 'Choose specific categories and topics.', icon: Settings, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+                { id: 'random', title: 'Random Mix', description: '20 questions across all aptitude topics.', icon: Repeat, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+                { id: 'company', title: 'Company Based', description: 'Tailored to a specific company exam pattern.', icon: Building2, color: 'text-amber-600', bgColor: 'bg-amber-50' }
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setAptitudeSubMode(opt.id as any)}
+                  className={`p-6 rounded-3xl border-2 text-left transition-all ${
+                    aptitudeSubMode === opt.id 
+                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 shadow-lg shadow-indigo-100 dark:shadow-none' 
+                      : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-2xl ${opt.bgColor} dark:bg-opacity-10 ${opt.color} flex items-center justify-center mb-4`}>
+                    <opt.icon size={24} />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{opt.title}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{opt.description}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm space-y-8">
+              {aptitudeSubMode === 'custom' && (
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <label className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Select Categories</label>
+                    <div className="flex flex-wrap gap-3">
+                      {Object.keys(APTITUDE_CATEGORIES).map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setSelectedAptitudeCategories(prev => 
+                              prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+                            );
+                          }}
+                          className={`px-6 py-2 rounded-full border-2 text-sm font-bold transition-all ${
+                            selectedAptitudeCategories.includes(cat)
+                              ? 'border-indigo-600 bg-indigo-600 text-white'
+                              : 'border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {selectedAptitudeCategories.length > 0 && (
+                    <div className="space-y-4">
+                      <label className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Select Topics</label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {selectedAptitudeCategories.flatMap(cat => APTITUDE_CATEGORIES[cat as keyof typeof APTITUDE_CATEGORIES]).map((topic) => (
+                          <button
+                            key={topic}
+                            onClick={() => {
+                              setSelectedAptitudeTopics(prev => 
+                                prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
+                              );
+                            }}
+                            className={`p-3 rounded-xl border-2 text-xs font-bold transition-all text-center ${
+                              selectedAptitudeTopics.includes(topic)
+                                ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                                : 'border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            {topic}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <label className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Number of Questions</label>
+                    <div className="flex items-center gap-4">
+                      <input 
+                        type="range" 
+                        min="5" 
+                        max="50" 
+                        step="5"
+                        value={aptitudeQuestionCount}
+                        onChange={(e) => setAptitudeQuestionCount(parseInt(e.target.value))}
+                        className="flex-1 accent-indigo-600"
+                      />
+                      <span className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center font-bold">
+                        {aptitudeQuestionCount}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {aptitudeSubMode === 'random' && (
+                <div className="text-center py-8 space-y-4">
+                  <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-3xl flex items-center justify-center mx-auto">
+                    <Repeat size={40} />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Ready for a surprise?</h3>
+                  <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                    We'll pick 20 questions from all categories (Numerical, Reasoning, Verbal) to test your overall aptitude.
+                  </p>
+                </div>
+              )}
+
+              {aptitudeSubMode === 'company' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Company Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. TCS, Infosys, Google..."
+                        value={aptitudeCompany}
+                        onChange={(e) => setAptitudeCompany(e.target.value)}
+                        className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:border-indigo-300 dark:focus:border-indigo-700 outline-none dark:bg-slate-900 dark:text-white transition-all font-bold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Exam Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. NQT, AMCAT, On-Campus..."
+                        value={aptitudeExam}
+                        onChange={(e) => setAptitudeExam(e.target.value)}
+                        className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:border-indigo-300 dark:focus:border-indigo-700 outline-none dark:bg-slate-900 dark:text-white transition-all font-bold"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest">Additional Context / Pattern</label>
+                    <textarea 
+                      placeholder="Paste any specific exam pattern or topics mentioned in the job description..."
+                      value={aptitudeContext}
+                      onChange={(e) => setAptitudeContext(e.target.value)}
+                      rows={4}
+                      className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:border-indigo-300 dark:focus:border-indigo-700 outline-none dark:bg-slate-900 dark:text-white transition-all font-medium resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-center gap-4 pt-6">
+                <button onClick={() => setTestStep('overview')} className="px-10 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">Back</button>
+                <button
+                  disabled={
+                    (aptitudeSubMode === 'custom' && (selectedAptitudeCategories.length === 0 || selectedAptitudeTopics.length === 0)) ||
+                    (aptitudeSubMode === 'company' && (!aptitudeCompany || !aptitudeExam))
+                  }
+                  onClick={() => {
+                    if (aptitudeSubMode === 'company') {
+                      generateQuestions();
+                    } else {
+                      setTestStep('difficulty');
+                    }
+                  }}
+                  className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 dark:shadow-indigo-900/20 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {aptitudeSubMode === 'company' ? 'Analyze & Generate' : 'Next Step'} <ArrowRight size={18} />
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -1094,6 +1626,26 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{testInsights.roleExpectations}</p>
               </div>
 
+              {testInsights.deepAnalysis && (
+                <div className="p-5 bg-violet-50 dark:bg-violet-900/10 rounded-3xl border border-violet-100 dark:border-violet-900/20 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-violet-900 dark:text-violet-300">
+                    <History size={18} className="text-violet-600 dark:text-violet-400" />
+                    Deep Analysis
+                  </div>
+                  <p className="text-sm text-violet-800 dark:text-violet-400 leading-relaxed">{testInsights.deepAnalysis}</p>
+                </div>
+              )}
+
+              {testInsights.interviewPattern && (
+                <div className="p-5 bg-emerald-50 dark:bg-emerald-900/10 rounded-3xl border border-emerald-100 dark:border-emerald-900/20 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-300">
+                    <Repeat size={18} className="text-emerald-600 dark:text-emerald-400" />
+                    Interview Pattern
+                  </div>
+                  <p className="text-sm text-emerald-800 dark:text-emerald-400 leading-relaxed">{testInsights.interviewPattern}</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-3xl border border-indigo-100/50 dark:border-indigo-900/20 space-y-3">
                   <div className="flex items-center gap-2 font-bold text-indigo-900 dark:text-indigo-300">
@@ -1325,32 +1877,29 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className={`flex items-center gap-2 px-4 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-full font-mono text-sm font-bold border border-slate-100 dark:border-slate-800 ${timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-slate-600 dark:text-slate-400'}`}>
-                  <Clock size={16} />
-                  {formatTime(timeLeft)}
+                <div className="flex items-center gap-4">
+                  <div className={`flex items-center gap-2 px-4 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-full font-mono text-sm font-bold border border-slate-100 dark:border-slate-800 ${timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-slate-600 dark:text-slate-400'}`}>
+                    <Clock size={16} />
+                    {formatTime(timeLeft)}
+                  </div>
+                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+                  <button
+                    onClick={handleRunCode}
+                    disabled={isSubmitting || isRunning}
+                    className="px-5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isRunning ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
+                    Run
+                  </button>
+                  <button
+                    onClick={submitCode}
+                    disabled={isSubmitting || isRunning}
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} fill="currentColor" />}
+                    Submit
+                  </button>
                 </div>
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
-                <button
-                  onClick={() => {
-                    setBottomTab('testresult');
-                    submitCode();
-                  }}
-                  disabled={isSubmitting}
-                  className="px-5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 disabled:opacity-50"
-                >
-                  <Play size={16} fill="currentColor" />
-                  Run
-                </button>
-                <button
-                  onClick={submitCode}
-                  disabled={isSubmitting}
-                  className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20 flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} fill="currentColor" />}
-                  Submit
-                </button>
-              </div>
 
               <div className="flex items-center gap-4">
                 <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 dark:text-slate-400 transition-all"><Settings size={20} /></button>
@@ -1471,19 +2020,27 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setUserCode(codingProblem.starterCode)}
+                        className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-500 transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase"
+                      >
+                        <RefreshCw size={14} /> Reset
+                      </button>
                       <button className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-500 transition-all"><Maximize2 size={14} /></button>
                     </div>
                   </div>
                   <div className="flex-1 relative group">
                     {/* Line Numbers Simulation */}
                     <div className="absolute left-0 top-0 bottom-0 w-12 bg-slate-800/20 border-r border-slate-800/50 flex flex-col items-center py-6 text-[10px] font-mono text-slate-600 select-none">
-                      {Array.from({ length: 20 }).map((_, i) => (
+                      {Array.from({ length: Math.max(userCode.split('\n').length, 20) }).map((_, i) => (
                         <div key={i} className="h-6 leading-6">{i + 1}</div>
                       ))}
                     </div>
                     <textarea
+                      ref={editorRef}
                       value={userCode}
                       onChange={(e) => setUserCode(e.target.value)}
+                      onKeyDown={handleKeyDown}
                       className="absolute inset-0 left-12 bg-transparent text-slate-300 p-6 font-mono text-sm outline-none resize-none leading-6"
                       spellCheck={false}
                     />
@@ -1491,138 +2048,154 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 </div>
 
                 {/* Console Section */}
-                <div className="h-[35%] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-sm">
-                  <div className="flex items-center bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 px-2">
-                    <button
-                      onClick={() => setBottomTab('testcase')}
-                      className={`flex items-center gap-2 px-4 py-3 text-[10px] font-bold transition-all border-b-2 ${
-                        bottomTab === 'testcase' 
-                          ? 'border-emerald-600 text-emerald-600 bg-white dark:bg-slate-900' 
-                          : 'border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300'
-                      }`}
+                <div className={`${isConsoleOpen ? 'h-[35%]' : 'h-12'} bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-sm transition-all duration-300`}>
+                  <div className="flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 px-2">
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => {
+                          setIsConsoleOpen(true);
+                          setBottomTab('testcase');
+                        }}
+                        className={`flex items-center gap-2 px-4 py-3 text-[10px] font-bold transition-all border-b-2 ${
+                          bottomTab === 'testcase' && isConsoleOpen
+                            ? 'border-emerald-600 text-emerald-600 bg-white dark:bg-slate-900' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        <CheckCircle2 size={14} />
+                        Test Case
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsConsoleOpen(true);
+                          setBottomTab('testresult');
+                        }}
+                        className={`flex items-center gap-2 px-4 py-3 text-[10px] font-bold transition-all border-b-2 ${
+                          bottomTab === 'testresult' && isConsoleOpen
+                            ? 'border-indigo-600 text-indigo-600 bg-white dark:bg-slate-900' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        <Terminal size={14} />
+                        Test Result
+                      </button>
+                    </div>
+                    <button 
+                      onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+                      className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                     >
-                      <CheckCircle2 size={14} />
-                      Testcase
-                    </button>
-                    <button
-                      onClick={() => setBottomTab('testresult')}
-                      className={`flex items-center gap-2 px-4 py-3 text-[10px] font-bold transition-all border-b-2 ${
-                        bottomTab === 'testresult' 
-                          ? 'border-indigo-600 text-indigo-600 bg-white dark:bg-slate-900' 
-                          : 'border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      <Terminal size={14} />
-                      Test Result
+                      <ChevronDown size={16} className={`transition-transform duration-300 ${isConsoleOpen ? '' : 'rotate-180'}`} />
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-5">
-                    {bottomTab === 'testcase' && (
-                      <div className="space-y-4">
-                        <div className="flex gap-2">
-                          {codingProblem.examples.map((_, i) => (
-                            <button 
-                              key={i} 
-                              onClick={() => setSelectedCase(i)}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${selectedCase === i ? 'bg-slate-900 dark:bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-                            >
-                              Case {i + 1}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="space-y-3">
-                          <div className="space-y-1.5">
-                            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider font-mono">Input</div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 font-mono text-xs text-slate-700 dark:text-slate-300">
-                              {codingProblem.examples[selectedCase]?.input || ''}
-                            </div>
+                  {isConsoleOpen && (
+                    <div className="flex-1 overflow-y-auto p-5">
+                      {bottomTab === 'testcase' && (
+                        <div className="space-y-4">
+                          <div className="flex gap-2">
+                            {codingProblem.examples.map((_, i) => (
+                              <button 
+                                key={i} 
+                                onClick={() => setSelectedCase(i)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${selectedCase === i ? 'bg-slate-900 dark:bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                              >
+                                Case {i + 1}
+                              </button>
+                            ))}
                           </div>
-                          <div className="space-y-1.5">
-                            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider font-mono">Expected Output</div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 font-mono text-xs text-slate-700 dark:text-slate-300">
-                              {codingProblem.examples[selectedCase]?.output || ''}
-                            </div>
-                          </div>
-                          {codingProblem.examples[selectedCase]?.explanation && (
+                          <div className="space-y-3">
                             <div className="space-y-1.5">
-                              <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider font-mono">Explanation</div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400 italic leading-relaxed">
-                                {codingProblem.examples[selectedCase].explanation}
+                              <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider font-mono">Input</div>
+                              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 font-mono text-xs text-slate-700 dark:text-slate-300">
+                                {codingProblem.examples[selectedCase]?.input || ''}
                               </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider font-mono">Expected Output</div>
+                              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 font-mono text-xs text-slate-700 dark:text-slate-300">
+                                {codingProblem.examples[selectedCase]?.output || ''}
+                              </div>
+                            </div>
+                            {codingProblem.examples[selectedCase]?.explanation && (
+                              <div className="space-y-1.5">
+                                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider font-mono">Explanation</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 italic leading-relaxed">
+                                  {codingProblem.examples[selectedCase].explanation}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {bottomTab === 'testresult' && (
+                        <div className="h-full">
+                          {!submissionResult && !isSubmitting && !isRunning && (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-400 space-y-2">
+                              <p className="text-xs font-medium">You must run your code first</p>
+                            </div>
+                          )}
+
+                          {(isSubmitting || isRunning) && (
+                            <div className="flex flex-col items-center justify-center h-full text-indigo-600 dark:text-indigo-400 space-y-3">
+                              <Loader2 size={24} className="animate-spin" />
+                              <p className="text-[10px] font-bold animate-pulse uppercase tracking-widest">Running tests...</p>
+                            </div>
+                          )}
+
+                          {submissionResult && (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className={`text-sm font-bold ${submissionResult.status === 'Accepted' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  {submissionResult.status}
+                                </div>
+                                <div className="text-[10px] text-slate-400 dark:text-slate-400 font-mono">Runtime: 42ms</div>
+                              </div>
+                              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 italic">
+                                {submissionResult.feedback}
+                              </div>
+                              <div className="space-y-2">
+                                {submissionResult.testResults.map((res: any, i: number) => (
+                                  <div key={i} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl text-[10px]">
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-1.5 h-1.5 rounded-full ${res.passed ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                      <span className="text-slate-400 dark:text-slate-400">Case {i + 1}</span>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                      <div className="text-slate-400 dark:text-slate-400">Exp: <span className="text-slate-900 dark:text-slate-200 font-mono">{res.expected}</span></div>
+                                      <div className={res.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                                        Act: <span className="font-bold font-mono">{res.actual}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              {submissionResult.status === 'Accepted' && (
+                                <button
+                                  onClick={() => setTestStep('coding-results')}
+                                  className="w-full py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-slate-700 transition-all text-xs"
+                                >
+                                  Finish Challenge
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
-
-                    {bottomTab === 'testresult' && (
-                      <div className="h-full">
-                        {!submissionResult && !isSubmitting && (
-                          <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-400 space-y-2">
-                            <p className="text-xs font-medium">You must run your code first</p>
-                          </div>
-                        )}
-
-                        {isSubmitting && (
-                          <div className="flex flex-col items-center justify-center h-full text-indigo-600 dark:text-indigo-400 space-y-3">
-                            <Loader2 size={24} className="animate-spin" />
-                            <p className="text-[10px] font-bold animate-pulse uppercase tracking-widest">Running tests...</p>
-                          </div>
-                        )}
-
-                        {submissionResult && (
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className={`text-sm font-bold ${submissionResult.status === 'Accepted' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {submissionResult.status}
-                              </div>
-                              <div className="text-[10px] text-slate-400 dark:text-slate-400 font-mono">Runtime: 42ms</div>
-                            </div>
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 italic">
-                              {submissionResult.feedback}
-                            </div>
-                            <div className="space-y-2">
-                              {submissionResult.testResults.map((res: any, i: number) => (
-                                <div key={i} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl text-[10px]">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-1.5 h-1.5 rounded-full ${res.passed ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                    <span className="text-slate-400 dark:text-slate-400">Case {i + 1}</span>
-                                  </div>
-                                  <div className="flex items-center gap-4">
-                                    <div className="text-slate-400 dark:text-slate-400">Exp: <span className="text-slate-900 dark:text-slate-200 font-mono">{res.expected}</span></div>
-                                    <div className={res.passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-                                      Act: <span className="font-bold font-mono">{res.actual}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                            {submissionResult.status === 'Accepted' && (
-                              <button
-                                onClick={() => setTestStep('results')}
-                                className="w-full py-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-slate-700 transition-all text-xs"
-                              >
-                                Finish Challenge
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </motion.div>
         )}
 
-        {testStep === 'results' && (
+        {(testStep === 'results' || testStep === 'coding-results') && (
           <motion.div
             key="results"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="max-w-4xl mx-auto space-y-8 py-12 pb-20"
+            className={(testStep === 'coding-results') ? "h-full overflow-y-auto space-y-8 py-4 pb-20" : "max-w-4xl mx-auto space-y-8 py-12 pb-20"}
           >
             {/* Result Header */}
             <div className="bg-slate-900 dark:bg-slate-950 rounded-[2.5rem] p-12 text-white text-center space-y-6 relative overflow-hidden">
@@ -1637,7 +2210,11 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 </div>
                 <h1 className="text-4xl font-bold">Assessment Complete!</h1>
                 <p className="text-slate-400 max-w-md mx-auto">
-                  You've completed the {mode === 'mcq-role' ? (selectedRole === 'Custom' ? customRole : selectedRole) : mode.replace('-', ' ')} challenge. Here's how you performed.
+                  You've completed the {
+                    mode === 'aptitude' ? 'Aptitude' :
+                    mode === 'mcq-role' ? (selectedRole === 'Custom' ? customRole : selectedRole) : 
+                    mode.replace('-', ' ')
+                  } challenge. Here's how you performed.
                 </p>
                 
                 <div className="flex justify-center gap-12 pt-8">
@@ -1745,12 +2322,26 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                             })}
                           </div>
 
-                          <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-start gap-3">
-                            <Info className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" size={18} />
-                            <p className="text-sm text-indigo-900 dark:text-indigo-300 leading-relaxed">
-                              <span className="font-bold">Explanation: </span>
-                              {q.explanation}
-                            </p>
+                          <div className="space-y-4">
+                            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-start gap-3">
+                              <Info className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" size={18} />
+                              <p className="text-sm text-indigo-900 dark:text-indigo-300 leading-relaxed">
+                                <span className="font-bold">Explanation: </span>
+                                {q.explanation}
+                              </p>
+                            </div>
+
+                            {!isCorrect && userAnswers[idx] !== -1 && (
+                              <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-start gap-3 border border-red-100 dark:border-red-900/30">
+                                <AlertCircle className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" size={18} />
+                                <div className="space-y-1">
+                                  <p className="text-sm text-red-900 dark:text-red-300 font-bold">Why your answer was incorrect:</p>
+                                  <p className="text-sm text-red-800 dark:text-red-400 leading-relaxed">
+                                    {q.distractorAnalysis[userAnswers[idx]]}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

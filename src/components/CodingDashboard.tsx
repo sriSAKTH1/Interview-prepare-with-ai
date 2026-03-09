@@ -15,39 +15,29 @@ import {
   PieChart as PieChartIcon,
   Activity,
   Zap,
-  ArrowRight
+  ArrowRight,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CodingPlatformStats, DSATopicProgress, InterviewReadinessScore } from '../types';
+import { fetchAllPlatformStats, PlatformStats } from '../services/platformService';
 
-export function CodingDashboard({ onStartTest }: { onStartTest: (mode: any, company?: string, role?: string) => void }) {
-  const [usernames, setUsernames] = useState({
-    leetcode: '',
-    hackerrank: '',
-    codechef: '',
-    geeksforgeeks: ''
+export function CodingDashboard({ onStartTest }: { onStartTest: (config: any) => void }) {
+  const [usernames, setUsernames] = useState(() => {
+    const saved = localStorage.getItem('coding_usernames');
+    return saved ? JSON.parse(saved) : {
+      leetcode: '',
+      codeforces: '',
+      codechef: '',
+      hackerrank: ''
+    };
   });
 
-  const [platformStats, setPlatformStats] = useState<CodingPlatformStats[]>([
-    {
-      platform: 'LeetCode',
-      username: 'sudharsan_01',
-      totalSolved: 450,
-      difficulty: { easy: 150, medium: 250, hard: 50 },
-      streak: 15,
-      rating: 1850,
-      badges: ['Knight', 'Daily Challenge']
-    },
-    {
-      platform: 'HackerRank',
-      username: 'sudharsan_hr',
-      totalSolved: 120,
-      difficulty: { easy: 60, medium: 40, hard: 20 },
-      streak: 5,
-      badges: ['5 Star Problem Solving']
-    }
-  ]);
+  const [platformStats, setPlatformStats] = useState<PlatformStats[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const [dsaProgress, setDsaProgress] = useState<DSATopicProgress[]>([
     { topic: 'Arrays', total: 100, solved: 80, percentage: 80 },
@@ -76,12 +66,44 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (mode: any, comp
     ]
   });
 
+  useEffect(() => {
+    localStorage.setItem('coding_usernames', JSON.stringify(usernames));
+  }, [usernames]);
+
+  useEffect(() => {
+    const hasUsernames = Object.values(usernames).some(v => v !== '');
+    if (hasUsernames) {
+      refreshStats();
+    }
+  }, []);
+
+  const refreshStats = async () => {
+    setIsLoading(true);
+    try {
+      const stats = await fetchAllPlatformStats({
+        leetcode: usernames.leetcode,
+        codeforces: usernames.codeforces,
+        codechef: usernames.codechef
+      });
+      setPlatformStats(stats);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Failed to refresh stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUsernameChange = (platform: string, value: string) => {
+    setUsernames(prev => ({ ...prev, [platform.toLowerCase()]: value }));
+  };
+
   const [companySearch, setCompanySearch] = useState({ company: '', role: '' });
 
   const difficultyData = [
-    { name: 'Easy', value: platformStats.reduce((acc, curr) => acc + curr.difficulty.easy, 0), color: '#10b981' },
-    { name: 'Medium', value: platformStats.reduce((acc, curr) => acc + curr.difficulty.medium, 0), color: '#f59e0b' },
-    { name: 'Hard', value: platformStats.reduce((acc, curr) => acc + curr.difficulty.hard, 0), color: '#ef4444' }
+    { name: 'Easy', value: platformStats.reduce((acc, curr) => acc + (curr.difficulty?.easy || 0), 0), color: '#10b981' },
+    { name: 'Medium', value: platformStats.reduce((acc, curr) => acc + (curr.difficulty?.medium || 0), 0), color: '#f59e0b' },
+    { name: 'Hard', value: platformStats.reduce((acc, curr) => acc + (curr.difficulty?.hard || 0), 0), color: '#ef4444' }
   ];
 
   return (
@@ -91,20 +113,37 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (mode: any, comp
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Code2 className="text-indigo-600 dark:text-indigo-400" /> Coding Platforms
-              </h2>
-              <button className="text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1">
-                <Plus size={16} /> Add Platform
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Code2 className="text-indigo-600 dark:text-indigo-400" /> Coding Platforms
+                </h2>
+                {lastUpdated && (
+                  <p className="text-[10px] text-slate-400 font-medium">Last updated: {lastUpdated}</p>
+                )}
+              </div>
+              <button 
+                onClick={refreshStats}
+                disabled={isLoading}
+                className="text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1 disabled:opacity-50"
+              >
+                {isLoading ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                Refresh Stats
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {['LeetCode', 'HackerRank', 'CodeChef', 'GeeksforGeeks'].map((platform) => (
-                <div key={platform} className="relative">
+              {[
+                { name: 'LeetCode', key: 'leetcode' },
+                { name: 'Codeforces', key: 'codeforces' },
+                { name: 'CodeChef', key: 'codechef' },
+                { name: 'HackerRank', key: 'hackerrank' }
+              ].map((platform) => (
+                <div key={platform.key} className="relative">
                   <input
                     type="text"
-                    placeholder={`${platform} Username`}
+                    value={usernames[platform.key as keyof typeof usernames]}
+                    onChange={(e) => handleUsernameChange(platform.key, e.target.value)}
+                    placeholder={`${platform.name} Username`}
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white dark:placeholder:text-slate-500"
                   />
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
@@ -116,6 +155,23 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (mode: any, comp
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {platformStats.length === 0 && !isLoading && (
+              <div className="md:col-span-2 py-12 text-center bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-700">
+                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Activity size={32} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Platforms Connected</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Enter your usernames above to sync your real-time coding progress.</p>
+              </div>
+            )}
+            
+            {isLoading && platformStats.length === 0 && (
+              <div className="md:col-span-2 py-12 text-center">
+                <RefreshCw size={32} className="animate-spin text-indigo-600 mx-auto mb-4" />
+                <p className="text-sm text-slate-500 dark:text-slate-400">Fetching your coding data...</p>
+              </div>
+            )}
+
             {platformStats.map((stats) => (
               <div key={stats.platform} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group">
                 <div className="flex items-center justify-between mb-4">
@@ -129,34 +185,36 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (mode: any, comp
                     </div>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-lg font-bold text-slate-900 dark:text-white">{stats.totalSolved}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">Solved</span>
+                    <span className="text-lg font-bold text-slate-900 dark:text-white">{stats.totalSolved || stats.rating || 0}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">{stats.totalSolved ? 'Solved' : 'Rating'}</span>
                   </div>
                 </div>
                 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 dark:text-slate-400">Difficulty Distribution</span>
-                    <span className="text-indigo-600 dark:text-indigo-400 font-bold">View Details</span>
+                {stats.difficulty && stats.totalSolved > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400">Difficulty Distribution</span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">View Details</span>
+                    </div>
+                    <div className="flex h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      <div className="bg-emerald-500" style={{ width: `${(stats.difficulty.easy / stats.totalSolved) * 100}%` }} />
+                      <div className="bg-amber-500" style={{ width: `${(stats.difficulty.medium / stats.totalSolved) * 100}%` }} />
+                      <div className="bg-red-500" style={{ width: `${(stats.difficulty.hard / stats.totalSolved) * 100}%` }} />
+                    </div>
+                    <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                      <span>E: {stats.difficulty.easy}</span>
+                      <span>M: {stats.difficulty.medium}</span>
+                      <span>H: {stats.difficulty.hard}</span>
+                    </div>
                   </div>
-                  <div className="flex h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                    <div className="bg-emerald-500" style={{ width: `${(stats.difficulty.easy / stats.totalSolved) * 100}%` }} />
-                    <div className="bg-amber-500" style={{ width: `${(stats.difficulty.medium / stats.totalSolved) * 100}%` }} />
-                    <div className="bg-red-500" style={{ width: `${(stats.difficulty.hard / stats.totalSolved) * 100}%` }} />
-                  </div>
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500">
-                    <span>E: {stats.difficulty.easy}</span>
-                    <span>M: {stats.difficulty.medium}</span>
-                    <span>H: {stats.difficulty.hard}</span>
-                  </div>
-                </div>
+                )}
 
                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Activity size={14} className="text-orange-500" />
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{stats.streak} Day Streak</span>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{stats.rank || 'Active'}</span>
                   </div>
-                  {stats.rating && (
+                  {stats.rating !== undefined && stats.rating > 0 && (
                     <div className="flex items-center gap-2">
                       <Trophy size={14} className="text-amber-500" />
                       <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Rating: {stats.rating}</span>
@@ -310,7 +368,7 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (mode: any, comp
               </div>
             </div>
             <button 
-              onClick={() => onStartTest('comprehensive-company-test', companySearch.company, companySearch.role)}
+              onClick={() => onStartTest({ mode: 'comprehensive-company-test', company: companySearch.company, role: companySearch.role })}
               className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-bold hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-lg"
             >
               <Zap size={18} fill="currentColor" />

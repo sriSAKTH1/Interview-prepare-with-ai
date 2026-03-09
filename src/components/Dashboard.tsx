@@ -1,19 +1,32 @@
-import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2 } from 'lucide-react';
+import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles } from 'lucide-react';
 import { TestResult } from '../types';
 import { CodingDashboard } from './CodingDashboard';
+import { motion } from 'motion/react';
 
-export function Dashboard({ history, onStartTest }: { history: TestResult[], onStartTest: (mode: any, company?: string, role?: string) => void }) {
+export function Dashboard({ 
+  history, 
+  onStartTest, 
+  careerPath, 
+  setCareerPath 
+}: { 
+  history: TestResult[], 
+  onStartTest: (config: any) => void,
+  careerPath: string,
+  setCareerPath: (path: string) => void
+}) {
+  const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'AI Engineer'];
+
   const avgScore = history.length > 0 
     ? Math.round(history.reduce((acc, curr) => acc + (curr.correct / curr.total) * 100, 0) / history.length)
     : 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome back, Sudharsan! 👋</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Here's what's happening with your preparation today.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Your current career path is set to <span className="text-indigo-600 dark:text-indigo-400 font-bold">{careerPath}</span>.</p>
         </div>
         <div className="flex gap-3">
           <button className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -22,6 +35,31 @@ export function Dashboard({ history, onStartTest }: { history: TestResult[], onS
           <button className="px-4 py-2 bg-indigo-600 rounded-xl text-sm font-medium text-white hover:bg-indigo-700 transition-colors shadow-sm">
             Start Practice
           </button>
+        </div>
+      </div>
+
+      {/* Career Path Selector */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
+            <Target size={20} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tailor Your Experience</h2>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {roles.map((role) => (
+            <button
+              key={role}
+              onClick={() => setCareerPath(role)}
+              className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
+                careerPath === role
+                  ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                  : 'border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700'
+              }`}
+            >
+              {role}
+            </button>
+          ))}
         </div>
       </div>
 

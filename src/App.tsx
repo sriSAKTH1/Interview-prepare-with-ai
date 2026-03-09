@@ -30,7 +30,19 @@ export default function App() {
       improvements: ['Practice Dijkstra\'s algorithm', 'Study topological sorting']
     }
   ]);
-  const [testConfig, setTestConfig] = useState<{ mode: any, company?: string, role?: string } | null>(null);
+  const [testConfig, setTestConfig] = useState<{ 
+    mode: any, 
+    company?: string, 
+    role?: string,
+    examName?: string,
+    context?: string
+  } | null>(null);
+  const [careerPath, setCareerPath] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('careerPath') || 'Frontend Developer';
+    }
+    return 'Frontend Developer';
+  });
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
@@ -50,12 +62,21 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  useEffect(() => {
+    localStorage.setItem('careerPath', careerPath);
+  }, [careerPath]);
+
   const addTestResult = (result: TestResult) => {
     setTestHistory(prev => [result, ...prev]);
   };
 
-  const startTest = (mode: any, company?: string, role?: string) => {
-    setTestConfig({ mode, company, role });
+  const startTest = (config: any) => {
+    // Check if config is a string (legacy) or an object
+    if (typeof config === 'string') {
+      setTestConfig({ mode: config });
+    } else {
+      setTestConfig(config);
+    }
     setActiveSection('test');
   };
 
@@ -183,7 +204,12 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <Dashboard history={testHistory} onStartTest={startTest} />
+              <Dashboard 
+                history={testHistory} 
+                onStartTest={startTest} 
+                careerPath={careerPath}
+                setCareerPath={setCareerPath}
+              />
             </motion.div>
           )}
           
@@ -201,6 +227,7 @@ export default function App() {
                 setTopic={setLearnTopic} 
                 mode={learnMode} 
                 setMode={setLearnMode} 
+                careerPath={careerPath}
               />
             </motion.div>
           )}
@@ -214,7 +241,7 @@ export default function App() {
               transition={{ duration: 0.2 }}
               className="h-[calc(100vh-64px)]"
             >
-              <PrepareSection />
+              <PrepareSection careerPath={careerPath} onStartTest={startTest} />
             </motion.div>
           )}
 
@@ -230,7 +257,9 @@ export default function App() {
                 onComplete={addTestResult} 
                 initialMode={testConfig?.mode}
                 initialCompany={testConfig?.company}
-                initialRole={testConfig?.role}
+                initialRole={testConfig?.role || careerPath}
+                initialExamName={testConfig?.examName}
+                initialContext={testConfig?.context}
               />
             </motion.div>
           )}

@@ -1,7 +1,7 @@
 export type Section = 'home' | 'learn' | 'prepare' | 'test';
 export type LearnTopic = 'overview' | 'linear-overview' | 'array' | 'string' | 'stack' | 'queue' | 'linked-list' | 'non-linear-overview' | 'tree' | 'graph' | 'sorting' | 'searching-graphs';
 export type LearnMode = 'overview' | 'flashcards' | 'quiz' | 'spaced';
-export type TestMode = 'overview' | 'mcq-dsa' | 'mcq-role' | 'coding-topic' | 'company-round' | 'comprehensive-company-test';
+export type TestMode = 'overview' | 'mcq-dsa' | 'mcq-role' | 'coding-topic' | 'company-round' | 'comprehensive-company-test' | 'aptitude';
 
 export interface CodingPlatformStats {
   platform: string;
