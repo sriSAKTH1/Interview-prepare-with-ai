@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (optional)
+    //   - careerPath: string (optional)
+    //
+    // Collection: completedTopics
+    // Document ID: auto-generated
+    // Fields:
+    //   - uid: string (required) - owner
+    //   - topicId: string (required)
+    //   - topicName: string (required)
+    //   - category: string (optional)
+    //   - completedAt: timestamp (required)
+    //
+    // Collection: testResults
+    // Document ID: auto-generated
+    // Fields:
+    //   - uid: string (required) - owner
+    //   - title: string (required)
+    //   - score: string (required)
+    //   - total: number (optional)
+    //   - correct: number (optional)
+    //   - time: string (optional)
+    //   - status: string (optional)
+    //   - feedback: string (optional)
+    //   - weaknesses: list (optional)
+    //   - improvements: list (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+    
+    function incomingDataIsOwner() {
+      return isAuthenticated() && request.auth.uid == request.resource.data.uid;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('careerPath' in data) || data.careerPath is string);
+    }
+
+    function isValidCompletedTopic(data) {
+      return data.keys().hasAll(['uid', 'topicId', 'topicName', 'completedAt']) &&
+             data.uid is string &&
+             data.topicId is string &&
+             data.topicName is string &&
+             data.completedAt is timestamp;
+    }
+
+    function isValidTestResult(data) {
+      return data.keys().hasAll(['uid', 'title', 'score', 'createdAt']) &&
+             data.uid is string &&
+             data.title is string &&
+             data.score is string &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidUser(request.resource.data);
+      allow update: if isOwner(uid) && isValidUser(request.resource.data);
+    }
+
+    match /completedTopics/{id} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if incomingDataIsOwner() && isValidCompletedTopic(request.resource.data);
+      allow update: if isDocOwner() && incomingDataIsOwner() && isValidCompletedTopic(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+
+    match /testResults/{id} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if incomingDataIsOwner() && isValidTestResult(request.resource.data);
+      allow update: if isDocOwner() && incomingDataIsOwner() && isValidTestResult(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+  }
+}

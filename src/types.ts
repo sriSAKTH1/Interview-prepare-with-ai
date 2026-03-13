@@ -1,7 +1,7 @@
 export type Section = 'home' | 'learn' | 'prepare' | 'test';
-export type LearnTopic = 'overview' | 'linear-overview' | 'array' | 'string' | 'stack' | 'queue' | 'linked-list' | 'non-linear-overview' | 'tree' | 'graph' | 'sorting' | 'searching-graphs';
+export type LearnTopic = 'overview' | 'linear-overview' | 'array' | 'string' | 'stack' | 'queue' | 'linked-list' | 'non-linear-overview' | 'tree' | 'graph' | 'sorting' | 'bubble-sort' | 'selection-sort' | 'insertion-sort' | 'merge-sort' | 'quick-sort' | 'heap-sort' | 'bucket-sort' | 'searching-graphs' | 'linear-search' | 'binary-search' | 'bfs' | 'dfs';
 export type LearnMode = 'overview' | 'flashcards' | 'quiz' | 'spaced';
-export type TestMode = 'overview' | 'mcq-dsa' | 'mcq-role' | 'coding-topic' | 'company-round' | 'comprehensive-company-test' | 'aptitude';
+export type TestMode = 'overview' | 'mcq-dsa' | 'mcq-role' | 'company-round' | 'aptitude' | 'comprehensive-company-test' | 'input-output';
 
 export interface CodingPlatformStats {
   platform: string;
@@ -52,4 +52,12 @@ export interface TestResult {
   weaknesses: string[];
   improvements: string[];
   topicAnalysis?: TopicPerformance[];
+}
+
+export interface CompletedTopic {
+  id: string;
+  topicId: string;
+  topicName: string;
+  category: string;
+  completedAt: string;
 }

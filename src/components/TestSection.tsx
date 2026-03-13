@@ -4,7 +4,6 @@ import {
   ClipboardCheck, 
   Code2, 
   Briefcase, 
-  FileCode, 
   Building2, 
   Mic, 
   ChevronRight, 
@@ -47,6 +46,7 @@ import {
 } from 'lucide-react';
 import { TestMode, TestResult } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
+import ReactMarkdown from 'react-markdown';
 
 interface Question {
   id: string;
@@ -73,7 +73,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
   initialContext?: string
 }) {
   const [mode, setMode] = useState<TestMode>(initialMode || 'overview');
-  const [testStep, setTestStep] = useState<'overview' | 'difficulty' | 'role-selection' | 'topic-selection' | 'company-config' | 'generating' | 'pre-test-summary' | 'rules' | 'active' | 'results' | 'coding-active' | 'coding-results' | 'aptitude-config'>(initialMode ? 'generating' : 'overview');
+  const [testStep, setTestStep] = useState<'overview' | 'difficulty' | 'role-selection' | 'topic-selection' | 'company-config' | 'generating' | 'pre-test-summary' | 'rules' | 'active' | 'results' | 'coding-active' | 'coding-results' | 'aptitude-config' | 'io-config'>(initialMode ? 'generating' : 'overview');
+  const [ioLanguage, setIoLanguage] = useState<string>('C');
   const [aptitudeSubMode, setAptitudeSubMode] = useState<'custom' | 'random' | 'company'>('random');
   const [selectedAptitudeCategories, setSelectedAptitudeCategories] = useState<string[]>([]);
   const [selectedAptitudeTopics, setSelectedAptitudeTopics] = useState<string[]>([]);
@@ -217,9 +218,95 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
 
     setIsGenerating(true);
     setTestStep('generating');
+    setMode(activeMode);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       
+      if (activeMode === 'input-output') {
+        const prompt = `Generate 10 high-quality "Predict the Output" questions for ${ioLanguage === 'Zoho question' ? 'Zoho interview pattern' : ioLanguage}.
+        Difficulty: ${difficulty}
+        
+        For each question:
+        1. Provide a code snippet in ${ioLanguage === 'Zoho question' ? 'C/C++/Java' : ioLanguage}.
+        2. The question should ask "What is the output of the following code?".
+        3. Provide 4 options, where one is the correct output.
+        4. Provide a detailed explanation of how the code executes.
+        
+        Return the response as a JSON object with the following schema:
+        {
+          "insights": {
+            "whatIsThis": "string",
+            "whyUseThis": "string",
+            "roleExpectations": "string",
+            "keyTopics": ["string"],
+            "preparationTips": ["string"],
+            "deepAnalysis": "string",
+            "interviewPattern": "string"
+          },
+          "questions": [
+            {
+              "id": "string",
+              "question": "string (include the code snippet in markdown code blocks)",
+              "options": ["string", "string", "string", "string"],
+              "correctAnswer": number (0-3),
+              "explanation": "string",
+              "distractorAnalysis": ["string", "string", "string", "string"]
+            }
+          ]
+        }`;
+
+        const result = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            responseMimeType: "application/json",
+            tools: ioLanguage === 'Zoho question' ? [{ googleSearch: {} }] : [],
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                insights: {
+                  type: Type.OBJECT,
+                  properties: {
+                    whatIsThis: { type: Type.STRING },
+                    whyUseThis: { type: Type.STRING },
+                    roleExpectations: { type: Type.STRING },
+                    keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    preparationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    deepAnalysis: { type: Type.STRING },
+                    interviewPattern: { type: Type.STRING }
+                  },
+                  required: ["whatIsThis", "whyUseThis", "roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
+                },
+                questions: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      id: { type: Type.STRING },
+                      question: { type: Type.STRING },
+                      options: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: 4, maxItems: 4 },
+                      correctAnswer: { type: Type.INTEGER },
+                      explanation: { type: Type.STRING },
+                      distractorAnalysis: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ["id", "question", "options", "correctAnswer", "explanation", "distractorAnalysis"]
+                  }
+                }
+              },
+              required: ["insights", "questions"]
+            }
+          }
+        });
+
+        const data = JSON.parse(result.text);
+        setQuestions(data.questions);
+        setTestInsights(data.insights);
+        setUserAnswers(new Array(data.questions.length).fill(-1));
+        setTestStep('pre-test-summary');
+        setIsGenerating(false);
+        return;
+      }
+
       if (activeMode === 'aptitude') {
         let aptitudeContextStr = "";
         let qCount = aptitudeQuestionCount;
@@ -243,6 +330,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
         Return the response as a JSON object with the following schema:
         {
           "insights": {
+            "whatIsThis": "string (explain what this specific aptitude test covers)",
+            "whyUseThis": "string (explain why this aptitude test is important for the user's goal)",
             "roleExpectations": "string",
             "keyTopics": ["string"],
             "preparationTips": ["string"],
@@ -273,13 +362,15 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 insights: {
                   type: Type.OBJECT,
                   properties: {
+                    whatIsThis: { type: Type.STRING },
+                    whyUseThis: { type: Type.STRING },
                     roleExpectations: { type: Type.STRING },
                     keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
                     preparationTips: { type: Type.ARRAY, items: { type: Type.STRING } },
                     deepAnalysis: { type: Type.STRING },
                     interviewPattern: { type: Type.STRING }
                   },
-                  required: ["roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
+                  required: ["whatIsThis", "whyUseThis", "roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
                 },
                 questions: {
                   type: Type.ARRAY,
@@ -330,6 +421,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
         Return the response as a JSON object with the following schema:
         {
           "insights": {
+            "whatIsThis": "string (explain what this specific test covers)",
+            "whyUseThis": "string (explain why this test is important for the user's goal)",
             "companyInfo": "string",
             "roleExpectations": "string",
             "keyTopics": ["string"],
@@ -379,6 +472,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 insights: {
                   type: Type.OBJECT,
                   properties: {
+                    whatIsThis: { type: Type.STRING },
+                    whyUseThis: { type: Type.STRING },
                     companyInfo: { type: Type.STRING },
                     roleExpectations: { type: Type.STRING },
                     keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -386,7 +481,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                     deepAnalysis: { type: Type.STRING },
                     interviewPattern: { type: Type.STRING }
                   },
-                  required: ["roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
+                  required: ["whatIsThis", "whyUseThis", "roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
                 },
                 aptitudeQuestions: {
                   type: Type.ARRAY,
@@ -469,105 +564,10 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
         return;
       }
 
-      if (activeMode === 'coding-topic') {
-        const prompt = `Generate a coding challenge for a technical interview.
-        Topic: ${selectedTopic}
-        Difficulty: ${difficulty}
-        
-        Return the response as a JSON object with the following schema:
-        {
-          "insights": {
-            "roleExpectations": "string",
-            "keyTopics": ["string"],
-            "preparationTips": ["string"]
-          },
-          "codingProblem": {
-            "title": "string",
-            "description": "string (markdown supported)",
-            "examples": [
-              { "input": "string", "output": "string", "explanation": "string" }
-            ],
-            "constraints": ["string"],
-            "starterCode": "string (Python function signature)",
-            "testCases": [
-              { "input": "string", "expected": "string" }
-            ]
-          }
-        }`;
-
-        const result = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                insights: {
-                  type: Type.OBJECT,
-                  properties: {
-                    roleExpectations: { type: Type.STRING },
-                    keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    preparationTips: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ["roleExpectations", "keyTopics", "preparationTips"]
-                },
-                codingProblem: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    examples: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          input: { type: Type.STRING },
-                          output: { type: Type.STRING },
-                          explanation: { type: Type.STRING }
-                        },
-                        required: ["input", "output"]
-                      }
-                    },
-                    constraints: {
-                      type: Type.ARRAY,
-                      items: { type: Type.STRING }
-                    },
-                    starterCode: { type: Type.STRING },
-                    testCases: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          input: { type: Type.STRING },
-                          expected: { type: Type.STRING }
-                        },
-                        required: ["input", "expected"]
-                      }
-                    }
-                  },
-                  required: ["title", "description", "examples", "constraints", "starterCode", "testCases"]
-                }
-              },
-              required: ["insights", "codingProblem"]
-            }
-          }
-        });
-
-        const data = JSON.parse(result.text);
-        setCodingProblem(data.codingProblem);
-        setUserCode(data.codingProblem.starterCode);
-        setTestInsights(data.insights);
-        setQuestions([]); // No MCQs
-        setTestStep('pre-test-summary');
-        return;
-      }
-
       let context = "";
       if (activeMode === 'mcq-dsa') context = `Data Structures and Algorithms topic: ${selectedTopic === 'Random' ? 'Mixed DSA topics' : selectedTopic}`;
       else if (activeMode === 'mcq-role') context = `Role: ${selectedRole === 'Custom' ? customRole : selectedRole}`;
       else if (activeMode === 'company-round') context = `Company: ${activeCompany}, Role: ${activeRole}, Level: ${experienceLevel}${activeExamName ? `, Exam/Interview: ${activeExamName}` : ''}${jobDescription ? `, Job Description: ${jobDescription}` : ''}${activePrepContext ? `. Additional Context: ${activePrepContext}` : ''}`;
-      else if (activeMode === 'coding-topic') context = `Coding challenge on: ${selectedTopic}`;
       else context = "General technical interview questions";
 
       const finalQuestionCount = customQuestionCount ? Math.min(parseInt(customQuestionCount) || 10, 50) : questionCount;
@@ -586,6 +586,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       Return the response as a JSON object with the following schema:
       {
         "insights": {
+          "whatIsThis": "string (explain what this specific test covers)",
+          "whyUseThis": "string (explain why this test is important for the user's goal)",
           "companyInfo": "string (brief info about company, only if company-round)",
           "roleExpectations": "string (what is expected for this role/topic)",
           "keyTopics": ["string", "string"],
@@ -617,6 +619,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
               insights: {
                 type: Type.OBJECT,
                 properties: {
+                  whatIsThis: { type: Type.STRING },
+                  whyUseThis: { type: Type.STRING },
                   companyInfo: { type: Type.STRING },
                   roleExpectations: { type: Type.STRING },
                   keyTopics: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -624,7 +628,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                   deepAnalysis: { type: Type.STRING },
                   interviewPattern: { type: Type.STRING }
                 },
-                required: ["roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
+                required: ["whatIsThis", "whyUseThis", "roleExpectations", "keyTopics", "preparationTips", "deepAnalysis", "interviewPattern"]
               },
               questions: {
                 type: Type.ARRAY,
@@ -660,7 +664,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
     } catch (error) {
       console.error("Error generating questions:", error);
       
-      if (activeMode === 'coding-topic' || activeMode === 'comprehensive-company-test') {
+      if (activeMode === 'comprehensive-company-test') {
         const fallbackProblem = {
           title: "Two Sum",
           description: "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.",
@@ -673,6 +677,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
             { input: "[2,7,11,15], 9", expected: "[0,1]" }
           ]
         };
+        setMode(activeMode);
         setCodingProblem(fallbackProblem);
         setUserCode(fallbackProblem.starterCode);
         setTestInsights({
@@ -739,7 +744,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       ${userCode}
       
       Example Test Cases:
-      ${JSON.stringify(codingProblem?.examples)}
+      ${codingProblem?.examples ? JSON.stringify(codingProblem.examples.map(ex => ({ input: ex.input, output: ex.output, explanation: ex.explanation }))) : '[]'}
       
       Return the response as a JSON object with the following schema:
       {
@@ -811,7 +816,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       ${userCode}
       
       Test Cases:
-      ${JSON.stringify(allTestCases)}
+      ${JSON.stringify(allTestCases.map(tc => ({ input: tc.input, expected: tc.expected })))}
       
       Return the response as a JSON object with the following schema:
       {
@@ -897,7 +902,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
   };
 
   const startTest = () => {
-    if (mode === 'coding-topic') {
+    console.log("Starting test with mode:", mode);
+    if (mode === 'comprehensive-company-test') {
       setTestStep('coding-active');
       setTimeLeft(45 * 60); // 45 minutes for coding
       setTestStartTime(Date.now());
@@ -968,7 +974,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
         ? `${companyName} (${companyRole}) - ${difficulty}`
         : mode === 'mcq-role'
         ? `${selectedRole === 'Custom' ? customRole : selectedRole} - ${difficulty}`
-        : `${mode.replace('-', ' ').toUpperCase()} - ${difficulty}`,
+        : `${String(mode).replace('-', ' ').toUpperCase()} - ${difficulty}`,
       score: score,
       total: questions.length,
       correct: correctCount,
@@ -1010,14 +1016,6 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       bgColor: 'bg-indigo-50'
     },
     { 
-      id: 'coding-topic', 
-      title: 'DSA Coding Challenge', 
-      description: 'Solve real-world coding problems with our interactive AI-powered code editor and analyzer.',
-      icon: FileCode,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50'
-    },
-    { 
       id: 'company-round', 
       title: 'Company Specific Round', 
       description: 'Simulate actual placement rounds for top tech companies like Google, Amazon, Microsoft, etc.',
@@ -1032,6 +1030,14 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       icon: Brain,
       color: 'text-rose-600',
       bgColor: 'bg-rose-50'
+    },
+    { 
+      id: 'input-output', 
+      title: 'Input/Output Test', 
+      description: 'Predict the output of code snippets in various languages like C, C++, Java, and Python.',
+      icon: Terminal,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50'
     }
   ];
 
@@ -1039,6 +1045,8 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
     setMode(optionId);
     if (optionId === 'aptitude') {
       setTestStep('aptitude-config');
+    } else if (optionId === 'input-output') {
+      setTestStep('io-config');
     } else {
       setTestStep('difficulty');
     }
@@ -1091,6 +1099,52 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
           </motion.div>
         )}
 
+        {testStep === 'io-config' && (
+          <motion.div
+            key="io-config"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="max-w-2xl mx-auto space-y-8"
+          >
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Input/Output Test Config</h2>
+              <p className="text-slate-500 dark:text-slate-400">Choose your preferred language or category.</p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {['C', 'C++', 'Java', 'Python', 'JavaScript', 'Zoho question'].map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setIoLanguage(lang)}
+                  className={`p-6 rounded-3xl border-2 transition-all text-center space-y-2 group ${
+                    ioLanguage === lang
+                      ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                      : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 ${
+                    ioLanguage === lang ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                  }`}>
+                    <Code2 size={20} />
+                  </div>
+                  <span className="font-bold text-sm">{lang}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-center gap-4 pt-6">
+              <button onClick={() => setTestStep('overview')} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">Back</button>
+              <button
+                onClick={() => setTestStep('difficulty')}
+                className="px-10 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20"
+              >
+                Next Step
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {testStep === 'difficulty' && (
           <motion.div
             key="difficulty"
@@ -1125,7 +1179,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
               <button
                 onClick={() => {
                   if (mode === 'mcq-role') setTestStep('role-selection');
-                  else if (mode === 'coding-topic' || mode === 'mcq-dsa') setTestStep('topic-selection');
+                  else if (mode === 'mcq-dsa') setTestStep('topic-selection');
                   else if (mode === 'company-round') setTestStep('company-config');
                   else generateQuestions();
                 }}
@@ -1385,8 +1439,12 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
             className="max-w-3xl mx-auto space-y-8 py-12"
           >
             <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Select DSA Topic</h2>
-              <p className="text-slate-500 dark:text-slate-400">Focus your assessment on a specific area of algorithms.</p>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
+                Select DSA Topic
+              </h2>
+              <p className="text-slate-500 dark:text-slate-400">
+                Focus your assessment on a specific area of algorithms.
+              </p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {topics.map((topic) => (
@@ -1452,7 +1510,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
               <button onClick={() => setTestStep('difficulty')} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">Back</button>
               <button
                 disabled={!selectedTopic}
-                onClick={generateQuestions}
+                onClick={() => generateQuestions()}
                 className="px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50"
               >
                 Generate Test
@@ -1541,7 +1599,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
               <button onClick={() => setTestStep('difficulty')} className="px-8 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">Back</button>
               <button
                 disabled={!companyName || !companyRole}
-                onClick={generateQuestions}
+                onClick={() => generateQuestions()}
                 className="px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50"
               >
                 Generate Test
@@ -1571,7 +1629,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
             <div className="flex flex-col gap-3 max-w-xs mx-auto">
               <div className="flex items-center gap-3 text-sm text-slate-400 dark:text-slate-400">
                 <CheckCircle2 size={16} className="text-emerald-500" />
-                <span>Analyzing {mode === 'mcq-role' ? (selectedRole === 'Custom' ? customRole : selectedRole) : mode.replace('-', ' ')} patterns</span>
+                <span>Analyzing {mode === 'mcq-role' ? (selectedRole === 'Custom' ? customRole : selectedRole) : String(mode).replace('-', ' ')} patterns</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-slate-400 dark:text-slate-400">
                 <CheckCircle2 size={16} className="text-emerald-500" />
@@ -1600,12 +1658,36 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
               <p className="text-slate-500 dark:text-slate-400">
                 Here's what we've prepared for your {
                   mode === 'company-round' ? 'Company Round' : 
-                  mode === 'coding-topic' ? `${selectedTopic} Coding Challenge` : 
                   mode === 'mcq-role' ? `${selectedRole === 'Custom' ? customRole : selectedRole} Assessment` :
+                  mode === 'mcq-dsa' ? `${selectedTopic} DSA Assessment` :
                   'Assessment'
                 }.
               </p>
             </div>
+
+            {/* AI Explanation Header */}
+            {((testInsights as any).whatIsThis || (testInsights as any).whyUseThis) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(testInsights as any).whatIsThis && (
+                  <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 space-y-2">
+                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                      <BookOpen size={16} />
+                      <h3 className="font-bold uppercase tracking-widest text-[10px]">What is this?</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">{(testInsights as any).whatIsThis}</p>
+                  </div>
+                )}
+                {(testInsights as any).whyUseThis && (
+                  <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                      <Target size={16} />
+                      <h3 className="font-bold uppercase tracking-widest text-[10px]">Why use this?</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">{(testInsights as any).whyUseThis}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-6">
               {testInsights.companyInfo && mode === 'company-round' && (
@@ -1711,7 +1793,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 <div>
                   <div className="font-bold text-slate-900 dark:text-white">Time Limit</div>
                   <div className="text-sm text-slate-500 dark:text-slate-400">
-                    {mode === 'coding-topic' ? '45 Minutes total' : `${questions.length} Minutes total`}
+                    {mode === 'comprehensive-company-test' ? '45 Minutes total' : `${questions.length} Minutes total`}
                   </div>
                 </div>
               </div>
@@ -1720,7 +1802,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 <div>
                   <div className="font-bold text-slate-900 dark:text-white">Assessment</div>
                   <div className="text-sm text-slate-500 dark:text-slate-400">
-                    {mode === 'coding-topic' ? '1 Coding Problem' : `${questions.length} MCQs`}
+                    {mode === 'comprehensive-company-test' ? '1 Coding Problem' : `${questions.length} MCQs`}
                   </div>
                 </div>
               </div>
@@ -1733,7 +1815,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full"></div>
-                {mode === 'coding-topic' ? 'You can submit your code multiple times.' : 'Each question has only one correct answer.'}
+                {mode === 'comprehensive-company-test' ? 'You can submit your code multiple times.' : 'Each question has only one correct answer.'}
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full"></div>
@@ -1782,9 +1864,29 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
             {/* Question Card */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 shadow-sm space-y-8 min-h-[400px] flex flex-col justify-between">
               <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
-                  {questions[currentQuestionIndex].question}
-                </h2>
+                <div className="prose dark:prose-invert max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => <div className="mb-4 last:mb-0">{children}</div>,
+                      code({ node, inline, className, children, ...props }: any) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        return !inline ? (
+                          <div className="bg-slate-900 rounded-2xl p-6 my-4 overflow-x-auto border border-slate-800">
+                            <code className="text-indigo-300 font-mono text-sm leading-relaxed" {...props}>
+                              {children}
+                            </code>
+                          </div>
+                        ) : (
+                          <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
+                            {children}
+                          </code>
+                        );
+                      }
+                    }}
+                  >
+                    {questions[currentQuestionIndex].question}
+                  </ReactMarkdown>
+                </div>
                 
                 <div className="grid grid-cols-1 gap-3">
                   {questions[currentQuestionIndex].options.map((option, idx) => (
@@ -1839,115 +1941,116 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
           </motion.div>
         )}
 
-        {testStep === 'coding-active' && codingProblem && (
-          <motion.div
-            key="coding-active"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="h-full flex flex-col gap-2"
-          >
-            {/* Top Bar: Navigation & Actions */}
-            <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div 
-                  onClick={() => setTestStep('overview')}
-                  className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors group"
-                >
-                  <div className="p-1.5 rounded-lg group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/20 transition-all">
-                    <ArrowLeft size={18} />
-                  </div>
-                  <span className="text-sm font-bold">Back</span>
-                </div>
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
-                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer transition-colors">
-                  <FileText size={18} />
-                  <span className="text-sm font-bold">Problem List</span>
-                </div>
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
-                <div className="flex items-center gap-3">
-                  <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all">
-                    <ArrowLeft size={16} />
-                  </button>
-                  <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all">
-                    <ArrowRight size={16} />
-                  </button>
-                  <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all">
-                    <RefreshCw size={16} />
-                  </button>
-                </div>
-              </div>
-
+        {testStep === 'coding-active' && (
+          codingProblem ? (
+            <motion.div
+              key="coding-active"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="h-full flex flex-col gap-2"
+            >
+              {/* Top Bar: Navigation & Actions */}
+              <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div className="flex items-center gap-4">
-                  <div className={`flex items-center gap-2 px-4 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-full font-mono text-sm font-bold border border-slate-100 dark:border-slate-800 ${timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-slate-600 dark:text-slate-400'}`}>
-                    <Clock size={16} />
-                    {formatTime(timeLeft)}
+                  <div 
+                    onClick={() => setTestStep('overview')}
+                    className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors group"
+                  >
+                    <div className="p-1.5 rounded-lg group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/20 transition-all">
+                      <ArrowLeft size={18} />
+                    </div>
+                    <span className="text-sm font-bold">Back</span>
                   </div>
                   <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
-                  <button
-                    onClick={handleRunCode}
-                    disabled={isSubmitting || isRunning}
-                    className="px-5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {isRunning ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
-                    Run
-                  </button>
-                  <button
-                    onClick={submitCode}
-                    disabled={isSubmitting || isRunning}
-                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20 flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} fill="currentColor" />}
-                    Submit
-                  </button>
-                </div>
-
-              <div className="flex items-center gap-4">
-                <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 dark:text-slate-400 transition-all"><Settings size={20} /></button>
-                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">SM</div>
-              </div>
-            </div>
-
-            {/* Main Content: Split View */}
-            <div className="flex-1 flex gap-2 overflow-hidden">
-              {/* Left Panel: Problem Info */}
-              <div className="w-[45%] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-sm">
-                {/* Tabs Header */}
-                <div className="flex items-center bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 px-2">
-                  {[
-                    { id: 'description', label: 'Description', icon: FileText },
-                    { id: 'editorial', label: 'Editorial', icon: BookOpen },
-                    { id: 'solutions', label: 'Solutions', icon: MessageSquare },
-                    { id: 'submissions', label: 'Submissions', icon: History }
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setLeftTab(tab.id as any)}
-                      className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition-all border-b-2 ${
-                        leftTab === tab.id 
-                          ? 'border-indigo-600 text-indigo-600 bg-white dark:bg-slate-900' 
-                          : 'border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      <tab.icon size={14} />
-                      {tab.label}
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer transition-colors">
+                    <FileText size={18} />
+                    <span className="text-sm font-bold">Problem List</span>
+                  </div>
+                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+                  <div className="flex items-center gap-3">
+                    <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all">
+                      <ArrowLeft size={16} />
                     </button>
-                  ))}
+                    <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all">
+                      <ArrowRight size={16} />
+                    </button>
+                    <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all">
+                      <RefreshCw size={16} />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Tab Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                  {leftTab === 'description' && (
-                    <>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{codingProblem.title}</h1>
-                          <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            difficulty === 'Easy' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' :
-                            difficulty === 'Medium' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                          }`}>
-                            {difficulty}
+                  <div className="flex items-center gap-4">
+                    <div className={`flex items-center gap-2 px-4 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-full font-mono text-sm font-bold border border-slate-100 dark:border-slate-800 ${timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-slate-600 dark:text-slate-400'}`}>
+                      <Clock size={16} />
+                      {formatTime(timeLeft)}
+                    </div>
+                    <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+                    <button
+                      onClick={handleRunCode}
+                      disabled={isSubmitting || isRunning}
+                      className="px-5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {isRunning ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
+                      Run
+                    </button>
+                    <button
+                      onClick={submitCode}
+                      disabled={isSubmitting || isRunning}
+                      className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20 flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} fill="currentColor" />}
+                      Submit
+                    </button>
+                  </div>
+
+                <div className="flex items-center gap-4">
+                  <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 dark:text-slate-400 transition-all"><Settings size={20} /></button>
+                  <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">SM</div>
+                </div>
+              </div>
+
+              {/* Main Content: Split View */}
+              <div className="flex-1 flex gap-2 overflow-hidden">
+                {/* Left Panel: Problem Info */}
+                <div className="w-[45%] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-sm">
+                  {/* Tabs Header */}
+                  <div className="flex items-center bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 px-2">
+                    {[
+                      { id: 'description', label: 'Description', icon: FileText },
+                      { id: 'editorial', label: 'Editorial', icon: BookOpen },
+                      { id: 'solutions', label: 'Solutions', icon: MessageSquare },
+                      { id: 'submissions', label: 'Submissions', icon: History }
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setLeftTab(tab.id as any)}
+                        className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition-all border-b-2 ${
+                          leftTab === tab.id 
+                            ? 'border-indigo-600 text-indigo-600 bg-white dark:bg-slate-900' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        <tab.icon size={14} />
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tab Content */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                    {leftTab === 'description' && (
+                      <>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{codingProblem.title}</h1>
+                            <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              difficulty === 'Easy' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' :
+                              difficulty === 'Medium' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                            }`}>
+                              {difficulty}
+                            </div>
                           </div>
-                        </div>
                         
                         <div className="flex items-center gap-3">
                           <button className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 transition-all">
@@ -2188,6 +2291,31 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
               </div>
             </div>
           </motion.div>
+          ) : (
+            <motion.div
+              key="coding-error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="h-full flex flex-col items-center justify-center p-12 text-center space-y-6"
+            >
+              <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+                <AlertCircle size={40} />
+              </div>
+              <div className="space-y-2 max-w-md">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Problem Not Found</h2>
+                <p className="text-slate-500 dark:text-slate-400">
+                  We encountered an issue loading the coding challenge. This can happen if the AI generation was interrupted or returned invalid data.
+                </p>
+              </div>
+              <button
+                onClick={() => setTestStep('overview')}
+                className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 dark:shadow-indigo-900/20 flex items-center gap-2"
+              >
+                <ArrowLeft size={18} />
+                Return to Overview
+              </button>
+            </motion.div>
+          )
         )}
 
         {(testStep === 'results' || testStep === 'coding-results') && (
@@ -2213,7 +2341,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                   You've completed the {
                     mode === 'aptitude' ? 'Aptitude' :
                     mode === 'mcq-role' ? (selectedRole === 'Custom' ? customRole : selectedRole) : 
-                    mode.replace('-', ' ')
+                    String(mode).replace('-', ' ')
                   } challenge. Here's how you performed.
                 </p>
                 
@@ -2304,7 +2432,28 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                                   </span>
                                 )}
                               </div>
-                              <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{q.question}</h3>
+                              <div className="prose dark:prose-invert max-w-none">
+                                <ReactMarkdown
+                                  components={{
+                                    p: ({ children }) => <div className="mb-2 last:mb-0">{children}</div>,
+                                    code({ node, inline, className, children, ...props }: any) {
+                                      return !inline ? (
+                                        <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800">
+                                          <code className="text-indigo-300 font-mono text-xs leading-relaxed" {...props}>
+                                            {children}
+                                          </code>
+                                        </div>
+                                      ) : (
+                                        <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
+                                          {children}
+                                        </code>
+                                      );
+                                    }
+                                  }}
+                                >
+                                  {q.question}
+                                </ReactMarkdown>
+                              </div>
                             </div>
                           </div>
 
@@ -2325,10 +2474,29 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                           <div className="space-y-4">
                             <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-start gap-3">
                               <Info className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" size={18} />
-                              <p className="text-sm text-indigo-900 dark:text-indigo-300 leading-relaxed">
+                              <div className="text-sm text-indigo-900 dark:text-indigo-300 leading-relaxed">
                                 <span className="font-bold">Explanation: </span>
-                                {q.explanation}
-                              </p>
+                                <ReactMarkdown
+                                  components={{
+                                    p: ({ children }) => <span className="inline">{children}</span>,
+                                    code({ node, inline, className, children, ...props }: any) {
+                                      return !inline ? (
+                                        <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800">
+                                          <code className="text-indigo-300 font-mono text-xs leading-relaxed" {...props}>
+                                            {children}
+                                          </code>
+                                        </div>
+                                      ) : (
+                                        <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
+                                          {children}
+                                        </code>
+                                      );
+                                    }
+                                  }}
+                                >
+                                  {q.explanation}
+                                </ReactMarkdown>
+                              </div>
                             </div>
 
                             {!isCorrect && userAnswers[idx] !== -1 && (
@@ -2336,9 +2504,28 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                                 <AlertCircle className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" size={18} />
                                 <div className="space-y-1">
                                   <p className="text-sm text-red-900 dark:text-red-300 font-bold">Why your answer was incorrect:</p>
-                                  <p className="text-sm text-red-800 dark:text-red-400 leading-relaxed">
-                                    {q.distractorAnalysis[userAnswers[idx]]}
-                                  </p>
+                                  <div className="text-sm text-red-800 dark:text-red-400 leading-relaxed">
+                                    <ReactMarkdown
+                                      components={{
+                                        p: ({ children }) => <span className="inline">{children}</span>,
+                                        code({ node, inline, className, children, ...props }: any) {
+                                          return !inline ? (
+                                            <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800">
+                                              <code className="text-indigo-300 font-mono text-xs leading-relaxed" {...props}>
+                                                {children}
+                                              </code>
+                                            </div>
+                                          ) : (
+                                            <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
+                                              {children}
+                                            </code>
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      {q.distractorAnalysis[userAnswers[idx]]}
+                                    </ReactMarkdown>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -2360,7 +2547,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                 Back to Dashboard
               </button>
               <button
-                onClick={generateQuestions}
+                onClick={() => generateQuestions()}
                 className="px-10 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
               >
                 <RefreshCw size={18} /> Retake Test

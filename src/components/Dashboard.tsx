@@ -1,5 +1,5 @@
-import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles } from 'lucide-react';
-import { TestResult } from '../types';
+import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen } from 'lucide-react';
+import { TestResult, CompletedTopic } from '../types';
 import { CodingDashboard } from './CodingDashboard';
 import { motion } from 'motion/react';
 
@@ -7,12 +7,16 @@ export function Dashboard({
   history, 
   onStartTest, 
   careerPath, 
-  setCareerPath 
+  setCareerPath,
+  completedTopics = [],
+  user
 }: { 
   history: TestResult[], 
   onStartTest: (config: any) => void,
   careerPath: string,
-  setCareerPath: (path: string) => void
+  setCareerPath: (path: string) => void,
+  completedTopics?: CompletedTopic[],
+  user?: any
 }) {
   const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'AI Engineer'];
 
@@ -20,12 +24,14 @@ export function Dashboard({
     ? Math.round(history.reduce((acc, curr) => acc + (curr.correct / curr.total) * 100, 0) / history.length)
     : 0;
 
+  const displayName = user?.displayName || 'Sudharsan';
+
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome back, Sudharsan! 👋</h1>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome back, {displayName}! 👋</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Your current career path is set to <span className="text-indigo-600 dark:text-indigo-400 font-bold">{careerPath}</span>.</p>
         </div>
         <div className="flex gap-3">
@@ -90,10 +96,10 @@ export function Dashboard({
           bgColor="bg-indigo-50" 
         />
         <StatCard 
-          title="Achievements" 
-          value="8" 
+          title="Topics Mastered" 
+          value={completedTopics.length.toString()} 
           change="New" 
-          icon={Award} 
+          icon={BookOpen} 
           color="text-amber-600" 
           bgColor="bg-amber-50" 
         />
@@ -104,25 +110,53 @@ export function Dashboard({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Activity */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Activity</h2>
-            <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View All</button>
+        <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Test Activity</h2>
+              <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View All</button>
+            </div>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+              {history.length > 0 ? (
+                history.map((item) => (
+                  <ActivityItem 
+                    key={item.id}
+                    title={item.title} 
+                    time={item.time} 
+                    score={item.score} 
+                    status={item.status} 
+                  />
+                ))
+              ) : (
+                <div className="p-8 text-center text-slate-500 dark:text-slate-400">No recent test activity</div>
+              )}
+            </div>
           </div>
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-            {history.length > 0 ? (
-              history.map((item) => (
-                <ActivityItem 
-                  key={item.id}
-                  title={item.title} 
-                  time={item.time} 
-                  score={item.score} 
-                  status={item.status} 
-                />
-              ))
-            ) : (
-              <div className="p-8 text-center text-slate-500 dark:text-slate-400">No recent activity</div>
-            )}
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Completed Topics</h2>
+              <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View Progress</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {completedTopics.length > 0 ? (
+                completedTopics.map((topic) => (
+                  <div key={topic.topicId} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{topic.topicName}</h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">{topic.category}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full bg-white dark:bg-slate-900 p-8 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-500 dark:text-slate-400">
+                  Start learning to see your completed topics here!
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

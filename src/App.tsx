@@ -3,33 +3,94 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
-import { Home, BookOpen, Bell, Search, User, ClipboardCheck, Zap, Moon, Sun, Settings } from 'lucide-react';
+import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import { Home, BookOpen, Bell, Search, User, ClipboardCheck, Zap, Moon, Sun, Settings, LogIn, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dashboard } from './components/Dashboard';
 import { LearnSection } from './components/LearnSection';
 import { PrepareSection } from './components/PrepareSection';
 import { TestSection } from './components/TestSection';
-import { Section, LearnTopic, LearnMode, TestResult } from './types';
+import { Section, LearnTopic, LearnMode, TestResult, CompletedTopic } from './types';
+import { 
+  auth, 
+  db, 
+  signInWithGoogle, 
+  logout, 
+  handleFirestoreError, 
+  OperationType 
+} from './firebase';
+import { 
+  onAuthStateChanged, 
+  User as FirebaseUser 
+} from 'firebase/auth';
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  addDoc, 
+  serverTimestamp,
+  orderBy,
+  doc,
+  setDoc,
+  Timestamp
+} from 'firebase/firestore';
+
+// Error Boundary Component
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: any }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+          <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-xl border border-slate-200 dark:border-slate-800 text-center space-y-6">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mx-auto">
+              <Zap size={32} />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Something went wrong</h1>
+            <p className="text-slate-500 dark:text-slate-400">
+              We encountered an unexpected error. Please try refreshing the page.
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors"
+            >
+              Refresh Page
+            </button>
+            {this.state.error && (
+              <pre className="text-[10px] text-left bg-slate-100 dark:bg-slate-800 p-4 rounded-lg overflow-auto max-h-40 text-slate-500">
+                {this.state.error.message || String(this.state.error)}
+              </pre>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<Section>('home');
   const [learnTopic, setLearnTopic] = useState<LearnTopic>('overview');
   const [learnMode, setLearnMode] = useState<LearnMode>('overview');
-  const [testHistory, setTestHistory] = useState<TestResult[]>([
-    {
-      id: '1',
-      title: 'Python Data Structures Mock Test',
-      score: '92/100',
-      total: 100,
-      correct: 92,
-      time: '2 hours ago',
-      status: 'Completed',
-      feedback: 'Excellent performance! You have a strong grasp of basic data structures.',
-      weaknesses: ['Graph Traversal'],
-      improvements: ['Practice Dijkstra\'s algorithm', 'Study topological sorting']
-    }
-  ]);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [testHistory, setTestHistory] = useState<TestResult[]>([]);
+  const [completedTopics, setCompletedTopics] = useState<CompletedTopic[]>([]);
   const [testConfig, setTestConfig] = useState<{ 
     mode: any, 
     company?: string, 
@@ -66,8 +127,120 @@ export default function App() {
     localStorage.setItem('careerPath', careerPath);
   }, [careerPath]);
 
-  const addTestResult = (result: TestResult) => {
-    setTestHistory(prev => [result, ...prev]);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthReady(true);
+      
+      if (currentUser) {
+        // Sync user profile
+        const userRef = doc(db, 'users', currentUser.uid);
+        setDoc(userRef, {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          displayName: currentUser.displayName,
+          careerPath: careerPath
+        }, { merge: true }).catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}`));
+      }
+    });
+    return () => unsubscribe();
+  }, [careerPath]);
+
+  // Sync Test Results
+  useEffect(() => {
+    if (!user || !isAuthReady) {
+      setTestHistory([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'testResults'),
+      where('uid', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const results = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          time: data.createdAt instanceof Timestamp 
+            ? new Date(data.createdAt.seconds * 1000).toLocaleString()
+            : 'Just now'
+        } as TestResult;
+      });
+      setTestHistory(results);
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'testResults'));
+
+    return () => unsubscribe();
+  }, [user, isAuthReady]);
+
+  // Sync Completed Topics
+  useEffect(() => {
+    if (!user || !isAuthReady) {
+      setCompletedTopics([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'completedTopics'),
+      where('uid', '==', user.uid),
+      orderBy('completedAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const topics = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          completedAt: data.completedAt instanceof Timestamp 
+            ? new Date(data.completedAt.seconds * 1000).toISOString()
+            : new Date().toISOString()
+        } as CompletedTopic;
+      });
+      setCompletedTopics(topics);
+    }, (err) => handleFirestoreError(err, OperationType.LIST, 'completedTopics'));
+
+    return () => unsubscribe();
+  }, [user, isAuthReady]);
+
+  const addTestResult = async (result: TestResult) => {
+    if (!user) {
+      setTestHistory(prev => [result, ...prev]);
+      return;
+    }
+
+    try {
+      const { id, time, ...rest } = result;
+      await addDoc(collection(db, 'testResults'), {
+        ...rest,
+        uid: user.uid,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'testResults');
+    }
+  };
+
+  const markTopicComplete = async (topicId: string, topicName: string, category: string) => {
+    if (!user) return;
+
+    // Check if already completed
+    if (completedTopics.some(t => t.topicId === topicId)) return;
+
+    try {
+      await addDoc(collection(db, 'completedTopics'), {
+        uid: user.uid,
+        topicId,
+        topicName,
+        category,
+        completedAt: serverTimestamp()
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'completedTopics');
+    }
   };
 
   const startTest = (config: any) => {
@@ -96,6 +269,7 @@ export default function App() {
   };
 
   return (
+    <ErrorBoundary>
       <div className={`min-h-screen bg-[#f8f9fa] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300`}>
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-50 h-16">
@@ -160,6 +334,29 @@ export default function App() {
                           <p className="text-xs text-slate-500 dark:text-slate-400">Manage your preferences</p>
                         </div>
                         <div className="p-2">
+                          {!user ? (
+                            <button 
+                              onClick={() => {
+                                signInWithGoogle().catch(err => console.error(err));
+                                setShowProfileMenu(false);
+                              }}
+                              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-indigo-600 font-bold"
+                            >
+                              <LogIn size={18} />
+                              <span className="text-sm">Sign In with Google</span>
+                            </button>
+                          ) : (
+                            <div className="p-3 mb-2 flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                              <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                                {user.displayName?.charAt(0) || 'U'}
+                              </div>
+                              <div className="overflow-hidden">
+                                <p className="text-sm font-bold truncate dark:text-white">{user.displayName}</p>
+                                <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+                              </div>
+                            </div>
+                          )}
+
                           <button 
                             onClick={() => setIsDarkMode(!isDarkMode)}
                             className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
@@ -179,9 +376,20 @@ export default function App() {
                           </button>
                         </div>
                         <div className="p-2 border-t border-slate-100 dark:border-slate-800">
-                          <button className="w-full text-left p-3 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
-                            Sign Out
-                          </button>
+                          {user ? (
+                            <button 
+                              onClick={() => {
+                                logout().catch(err => console.error(err));
+                                setShowProfileMenu(false);
+                              }}
+                              className="w-full text-left p-3 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors flex items-center gap-3"
+                            >
+                              <LogOut size={18} />
+                              Sign Out
+                            </button>
+                          ) : (
+                            <p className="p-3 text-[10px] text-slate-400 text-center italic">Sign in to sync your progress</p>
+                          )}
                         </div>
                       </motion.div>
                     </>
@@ -206,9 +414,11 @@ export default function App() {
             >
               <Dashboard 
                 history={testHistory} 
+                completedTopics={completedTopics}
                 onStartTest={startTest} 
                 careerPath={careerPath}
                 setCareerPath={setCareerPath}
+                user={user}
               />
             </motion.div>
           )}
@@ -228,6 +438,8 @@ export default function App() {
                 mode={learnMode} 
                 setMode={setLearnMode} 
                 careerPath={careerPath}
+                onMarkComplete={markTopicComplete}
+                completedTopics={completedTopics}
               />
             </motion.div>
           )}
@@ -266,5 +478,6 @@ export default function App() {
         </AnimatePresence>
       </main>
     </div>
+    </ErrorBoundary>
   );
 }

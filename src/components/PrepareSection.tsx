@@ -24,11 +24,20 @@ import {
   Zap,
   Building2,
   ExternalLink,
-  Globe
+  Globe,
+  Activity,
+  PlayCircle,
+  Eye,
+  Terminal,
+  BrainCircuit,
+  ListChecks,
+  Star
 } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
+import { StepVisualizer } from './StepVisualizer';
+import ReactMarkdown from 'react-markdown';
 
-type PrepareMode = 'overview' | 'role-plan' | 'dsa-plan' | 'roadmap' | 'resume-questions' | 'company-exam';
+type PrepareMode = 'overview' | 'role-plan' | 'dsa-plan' | 'roadmap' | 'resume-questions' | 'company-exam' | 'questions-approach';
 
 export function PrepareSection({ careerPath, onStartTest }: { 
   careerPath?: string,
@@ -96,20 +105,20 @@ export function PrepareSection({ careerPath, onStartTest }: {
 
   const prepareOptions = [
     {
+      id: 'questions-approach',
+      title: 'Questions Approach',
+      description: 'Paste a tough interview question and get a step-by-step breakdown of how to approach and solve it.',
+      icon: Code2,
+      color: 'bg-emerald-600',
+      tag: 'New'
+    },
+    {
       id: 'role-plan',
       title: 'Role-Based Study Plan',
       description: `Get a personalized ${selectedDuration}-day preparation plan tailored to your target role.`,
       icon: Layout,
       color: 'bg-indigo-500',
       tag: 'Personalized'
-    },
-    {
-      id: 'dsa-plan',
-      title: 'DSA Mastery Plan',
-      description: `A structured ${selectedDsaDuration === '90' ? '3-month' : selectedDsaDuration === '180' ? '6-month' : selectedDsaDuration === '270' ? '9-month' : selectedDsaDuration + '-day'} path to master Data Structures and Algorithms.`,
-      icon: Code2,
-      color: 'bg-emerald-500',
-      tag: 'Technical'
     },
     {
       id: 'roadmap',
@@ -145,11 +154,16 @@ export function PrepareSection({ careerPath, onStartTest }: {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Generate a ${selectedDuration}-day study plan for a ${selectedRole} position. 
-        Divide it into logical phases or weeks. Each phase should have a focus and daily topics.
+        1. Explain what this preparation plan is.
+        2. Explain why this specific plan is effective for a ${selectedRole}.
+        3. Provide a structured learning path divided into logical phases or weeks. Each phase should have a focus and daily topics.
         Include key resources or concepts to study.
         Return the response as a JSON object with this schema:
         {
           "title": "string",
+          "whatIsThis": "string",
+          "whyUseThis": "string",
+          "learningPathOverview": "string",
           "weeks": [
             {
               "week": number,
@@ -177,7 +191,11 @@ export function PrepareSection({ careerPath, onStartTest }: {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Generate a structured ${selectedDsaDuration === '90' ? '3-month' : selectedDsaDuration === '180' ? '6-month' : selectedDsaDuration === '270' ? '9-month' : selectedDsaDuration + '-day'} DSA study plan based on the following curriculum:
+        contents: `Generate a structured ${selectedDsaDuration === '90' ? '3-month' : selectedDsaDuration === '180' ? '6-month' : selectedDsaDuration === '270' ? '9-month' : selectedDsaDuration + '-day'} DSA study plan.
+        
+        1. Explain what this DSA preparation path covers.
+        2. Explain why mastering DSA is crucial for technical interviews.
+        3. Provide a structured learning path based on the following curriculum:
 
         Curriculum Reference:
         - Foundation: Arrays, Strings, Hashing, Matrix, Sorting, Two Pointers.
@@ -199,6 +217,9 @@ export function PrepareSection({ careerPath, onStartTest }: {
         Return the response as a JSON object with this schema:
         {
           "title": "string",
+          "whatIsThis": "string",
+          "whyUseThis": "string",
+          "learningPathOverview": "string",
           "prerequisites": [
             { "topic": "string", "link": "string (optional)", "description": "string" }
           ],
@@ -240,11 +261,12 @@ export function PrepareSection({ careerPath, onStartTest }: {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Provide a comprehensive preparation guide for ${companyOrExam} (Company/Role or Exam).
-        1. Explain the full interview/exam pattern.
-        2. Provide expert tricks and tips for success.
-        3. Create a ${selectedDuration}-day learning plan.
-        4. Provide 3-5 high-quality external resource links (Google search results/official links).
-        5. Explain how AI can specifically help in this preparation.
+        1. Explain what this guide covers and why it is essential for ${companyOrExam}.
+        2. Explain the full interview/exam pattern.
+        3. Provide expert tricks and tips for success.
+        4. Create a ${selectedDuration}-day learning path/plan.
+        5. Provide 3-5 high-quality external resource links (Google search results/official links).
+        6. Explain how AI can specifically help in this preparation.
         
         IMPORTANT: For the mock test configuration, ensure it reflects the actual exam/interview pattern. 
         When generating questions later, the AI should use Google Search to find previous year questions or similar high-quality patterns.
@@ -252,6 +274,9 @@ export function PrepareSection({ careerPath, onStartTest }: {
         Return the response as a JSON object with this schema:
         {
           "title": "string",
+          "whatIsThis": "string",
+          "whyUseThis": "string",
+          "learningPathOverview": "string",
           "pattern": [
             { "step": "string", "details": "string" }
           ],
@@ -264,7 +289,7 @@ export function PrepareSection({ careerPath, onStartTest }: {
           ],
           "aiUtility": "string",
           "mockTestConfig": {
-            "mode": "string (either 'comprehensive-company-test' or 'company-round')",
+            "mode": "string (must be 'company-round')",
             "company": "string",
             "role": "string",
             "examName": "string",
@@ -291,12 +316,17 @@ export function PrepareSection({ careerPath, onStartTest }: {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Generate a career roadmap for a ${selectedRole}. 
-        List the stages of learning from fundamentals to advanced specialization.
+        1. Explain what this roadmap represents for a ${selectedRole} career.
+        2. Explain why following this path is beneficial for long-term growth.
+        3. List the stages of learning from fundamentals to advanced specialization.
         For each stage, list the required skills and tools.
         Also suggest a Lucide icon name (e.g., 'Book', 'Code', 'Layers', 'Cpu', 'Rocket') that represents the stage.
         Return the response as a JSON object with this schema:
         {
           "role": "string",
+          "whatIsThis": "string",
+          "whyUseThis": "string",
+          "learningPathOverview": "string",
           "stages": [
             {
               "name": "string",
@@ -306,6 +336,87 @@ export function PrepareSection({ careerPath, onStartTest }: {
               "tools": ["string"]
             }
           ]
+        }`,
+        config: { responseMimeType: "application/json" }
+      });
+      setGeneratedContent(JSON.parse(response.text));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateQuestionApproach = async () => {
+    if (!userInput) return;
+    setLoading(true);
+    setGeneratedContent(null);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Analyze this interview question and provide a comprehensive, step-by-step guide following this flow: 
+        Intuition -> Approaches -> Why -> Code -> Complexity -> Pattern Recognition.
+        
+        Question: ${userInput}
+        
+        Follow this exact structure:
+        1. Title and Introduction (Brief overview).
+        2. Problem Understanding (Input, Goal, Example).
+        3. Key Observations.
+        4. Approach 1: Brute Force (Idea, Steps, Code, Complexity).
+        5. The Key Insight (The "Better Idea").
+        6. Approach 2: Optimal (Data Structure used, Algorithm Steps).
+        7. Step-by-Step Example of the optimal approach.
+        8. Optimal Code (Python and Java).
+        9. Complexity Analysis (Time and Space).
+        10. Why it works (The logic).
+        11. Pattern Recognition (What pattern is this? e.g., Sliding Window, HashMap).
+        12. Similar Problems to practice.
+        13. Interview Tip.
+        14. Visualization steps for the StepVisualizer component.
+
+        Return the response as a JSON object with this schema:
+        {
+          "title": "string",
+          "introduction": "string",
+          "problemUnderstanding": {
+            "input": "string",
+            "goal": "string",
+            "example": "string"
+          },
+          "keyObservations": ["string"],
+          "bruteForce": {
+            "idea": "string",
+            "steps": ["string"],
+            "code": "string",
+            "complexity": { "time": "string", "space": "string" }
+          },
+          "keyInsight": "string",
+          "optimalApproach": {
+            "dataStructure": "string",
+            "steps": ["string"]
+          },
+          "stepByStepExample": [
+            { "step": "string", "content": "string" }
+          ],
+          "optimalCodePython": "string",
+          "optimalCodeJava": "string",
+          "complexityOptimal": { "time": "string", "space": "string" },
+          "whyItWorks": "string",
+          "patternRecognition": { "name": "string", "description": "string" },
+          "similarProblems": ["string"],
+          "interviewTip": "string",
+          "visualization": {
+            "type": "string (one of: 'array', 'string', 'stack', 'queue')",
+            "steps": [
+              {
+                "data": "any",
+                "highlights": [number],
+                "explanation": "string"
+              }
+            ]
+          }
         }`,
         config: { responseMimeType: "application/json" }
       });
@@ -345,16 +456,21 @@ export function PrepareSection({ careerPath, onStartTest }: {
               }
             },
             {
-              text: "Analyze this resume and generate 10 to 20 interview questions tailored to the experience and skills mentioned. For each question, provide a 'Why we ask' explanation and a 'Good answer' tip. Return the response as a JSON object with this schema: { \"questions\": [ { \"question\": \"string\", \"why\": \"string\", \"tip\": \"string\" } ] }"
+              text: "Analyze this resume and generate 10 to 20 interview questions tailored to the experience and skills mentioned. 1. Explain what this analysis covers. 2. Explain why these questions are likely to be asked. 3. Provide the questions. For each question, provide a 'Why we ask' explanation and a 'Good answer' tip. Return the response as a JSON object with this schema: { \"whatIsThis\": \"string\", \"whyUseThis\": \"string\", \"questions\": [ { \"question\": \"string\", \"why\": \"string\", \"tip\": \"string\" } ] }"
             }
           ]
         };
       } else {
         contents = `Analyze this resume text and generate 10 to 20 interview questions tailored to the experience and skills mentioned.
+        1. Explain what this analysis covers.
+        2. Explain why these questions are likely to be asked.
+        3. Provide the questions.
         For each question, provide a "Why we ask" explanation and a "Good answer" tip.
         Resume Text: ${userInput}
         Return the response as a JSON object with this schema:
         {
+          "whatIsThis": "string",
+          "whyUseThis": "string",
           "questions": [
             { "question": "string", "why": "string", "tip": "string" }
           ]
@@ -567,6 +683,28 @@ export function PrepareSection({ careerPath, onStartTest }: {
               </button>
             </div>
           )}
+
+          {mode === 'questions-approach' && !generatedContent && (
+            <div className="mt-8 space-y-6">
+              <div className="space-y-4">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Paste Your Interview Question</label>
+                <textarea 
+                  placeholder="e.g., How do you implement a LRU cache? or What is the difference between let and var in JavaScript?"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  className="w-full h-64 p-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[2.5rem] text-lg outline-none focus:ring-2 focus:ring-emerald-500 dark:text-white resize-none shadow-inner"
+                />
+              </div>
+              <button 
+                onClick={generateQuestionApproach}
+                disabled={loading || !userInput}
+                className="w-full py-5 bg-emerald-600 text-white rounded-[1.5rem] font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-3 text-lg shadow-lg shadow-emerald-200 dark:shadow-none"
+              >
+                {loading ? <Loader2 size={24} className="animate-spin" /> : <Zap size={24} />}
+                Analyze & Explain Approach
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Generated Content */}
@@ -583,8 +721,41 @@ export function PrepareSection({ careerPath, onStartTest }: {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            className="space-y-8"
           >
+            {/* AI Explanation Header */}
+            {(generatedContent.whatIsThis || generatedContent.whyUseThis) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {generatedContent.whatIsThis && (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 space-y-3">
+                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                      <BookOpen size={20} />
+                      <h3 className="font-bold uppercase tracking-widest text-xs">What is this?</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{generatedContent.whatIsThis}</p>
+                  </div>
+                )}
+                {generatedContent.whyUseThis && (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                      <Target size={20} />
+                      <h3 className="font-bold uppercase tracking-widest text-xs">Why use this?</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{generatedContent.whyUseThis}</p>
+                  </div>
+                )}
+                {generatedContent.learningPathOverview && (
+                  <div className="md:col-span-2 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-[2rem] p-8 space-y-3">
+                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                      <Map size={20} />
+                      <h3 className="font-bold uppercase tracking-widest text-xs">Learning Path Overview</h3>
+                    </div>
+                    <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed font-medium">{generatedContent.learningPathOverview}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {mode === 'role-plan' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {generatedContent.weeks.map((week: any) => (
@@ -695,13 +866,6 @@ export function PrepareSection({ careerPath, onStartTest }: {
                                       </div>
                                     ))}
                                   </div>
-                                  <button
-                                    onClick={() => onStartTest?.({ mode: 'coding-topic', initialContext: topic.name })}
-                                    className="w-full py-2 bg-slate-900 dark:bg-slate-800 text-white rounded-xl text-[10px] font-bold hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 group/btn"
-                                  >
-                                    <Code2 size={14} className="group-hover/btn:rotate-12 transition-transform" />
-                                    Practice Now
-                                  </button>
                                 </div>
                               </div>
                             ))}
@@ -911,6 +1075,319 @@ export function PrepareSection({ careerPath, onStartTest }: {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {mode === 'questions-approach' && (
+              <div className="space-y-12">
+                {/* Introduction */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center">
+                      <BrainCircuit size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{generatedContent.title}</h3>
+                      <p className="text-slate-500 dark:text-slate-400">Intuition → Approaches → Why → Code → Complexity → Pattern</p>
+                    </div>
+                  </div>
+                  <div className="prose dark:prose-invert max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <div className="mb-4 last:mb-0">{children}</div>,
+                        code({ node, inline, className, children, ...props }: any) {
+                          return !inline ? (
+                            <div className="bg-slate-900 rounded-2xl p-6 my-4 overflow-x-auto border border-slate-800">
+                              <code className="text-indigo-300 font-mono text-sm leading-relaxed" {...props}>
+                                {children}
+                              </code>
+                            </div>
+                          ) : (
+                            <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
+                              {children}
+                            </code>
+                          );
+                        }
+                      }}
+                    >
+                      {generatedContent.introduction}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+
+                {/* Problem Understanding */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-8">
+                    <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
+                      <Eye size={24} />
+                      <h3 className="text-2xl font-bold">1. Problem Understanding</h3>
+                    </div>
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Input</h4>
+                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 font-mono text-sm">
+                            {generatedContent.problemUnderstanding.input}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Goal</h4>
+                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 text-sm">
+                            {generatedContent.problemUnderstanding.goal}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Example</h4>
+                        <div className="p-6 bg-slate-900 rounded-2xl font-mono text-sm text-indigo-300">
+                          <pre><code>{generatedContent.problemUnderstanding.example}</code></pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-6">
+                    <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+                      <ListChecks size={24} />
+                      <h3 className="text-xl font-bold">Key Observations</h3>
+                    </div>
+                    <ul className="space-y-4">
+                      {generatedContent.keyObservations.map((obs: string, i: number) => (
+                        <li key={i} className="flex gap-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          <div className="w-6 h-6 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center shrink-0 font-bold text-[10px]">
+                            {i + 1}
+                          </div>
+                          {obs}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Brute Force */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-slate-400">
+                      <Terminal size={24} />
+                      <h3 className="text-2xl font-bold">2. Approach 1 — Brute Force</h3>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">Time</div>
+                        <div className="text-sm font-bold text-rose-500">{generatedContent.bruteForce.complexity.time}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">Space</div>
+                        <div className="text-sm font-bold text-rose-500">{generatedContent.bruteForce.complexity.space}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-widest">Idea</h4>
+                        <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{generatedContent.bruteForce.idea}</p>
+                      </div>
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-widest">Steps</h4>
+                        <ul className="space-y-2">
+                          {generatedContent.bruteForce.steps.map((step: string, i: number) => (
+                            <li key={i} className="flex items-center gap-3 text-sm text-slate-500">
+                              <div className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
+                              {step}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="bg-slate-900 rounded-3xl p-6 overflow-hidden">
+                      <pre className="text-slate-400 font-mono text-xs leading-relaxed">
+                        <code>{generatedContent.bruteForce.code}</code>
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Insight & Optimal Approach */}
+                <div className="space-y-8">
+                  <div className="bg-indigo-600 rounded-[3rem] p-12 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full -mr-32 -mt-32" />
+                    <div className="relative z-10 flex flex-col items-center text-center space-y-6 max-w-3xl mx-auto">
+                      <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                        <Zap size={32} />
+                      </div>
+                      <h3 className="text-3xl font-bold">The Key Insight</h3>
+                      <p className="text-indigo-100 text-xl leading-relaxed italic">
+                        "{generatedContent.keyInsight}"
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-8">
+                      <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+                        <Target size={24} />
+                        <h3 className="text-2xl font-bold">3. Approach 2 — Optimal</h3>
+                      </div>
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Data Structure Used</h4>
+                          <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold inline-block">
+                            {generatedContent.optimalApproach.dataStructure}
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-widest">Algorithm Steps</h4>
+                          <div className="space-y-4">
+                            {generatedContent.optimalApproach.steps.map((step: string, i: number) => (
+                              <div key={i} className="flex gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <div className="w-8 h-8 bg-emerald-600 text-white rounded-lg flex items-center justify-center shrink-0 font-bold text-xs">
+                                  {i + 1}
+                                </div>
+                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{step}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-8">
+                      <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
+                        <Activity size={24} />
+                        <h3 className="text-2xl font-bold">Step-by-Step Example</h3>
+                      </div>
+                      <div className="space-y-6">
+                        {generatedContent.stepByStepExample.map((step: any, i: number) => (
+                          <div key={i} className="relative pl-10 pb-6 last:pb-0 before:absolute before:left-4 before:top-8 before:bottom-0 before:w-px before:bg-slate-100 dark:before:bg-slate-800 last:before:hidden">
+                            <div className="absolute left-0 top-0 w-8 h-8 bg-white dark:bg-slate-900 border-2 border-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                              {i + 1}
+                            </div>
+                            <div className="space-y-1">
+                              <h4 className="font-bold text-slate-900 dark:text-white text-sm">{step.step}</h4>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{step.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Visualization */}
+                {generatedContent.visualization && (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-8">
+                    <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
+                      <PlayCircle size={24} />
+                      <h3 className="text-2xl font-bold">Interactive Visualization</h3>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/30 rounded-[3rem] p-8 border border-slate-100 dark:border-slate-800">
+                      <StepVisualizer 
+                        type={generatedContent.visualization.type} 
+                        steps={generatedContent.visualization.steps} 
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Optimal Code */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 text-slate-900 dark:text-white">
+                      <Terminal size={24} />
+                      <h3 className="text-2xl font-bold">Optimal Code (Python)</h3>
+                    </div>
+                    <div className="bg-slate-900 rounded-[2rem] p-8 overflow-hidden relative group">
+                      <div className="absolute top-4 right-6 text-slate-500 text-[10px] font-bold uppercase tracking-widest">Python</div>
+                      <pre className="text-indigo-300 font-mono text-sm overflow-x-auto leading-relaxed">
+                        <code>{generatedContent.optimalCodePython}</code>
+                      </pre>
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 text-slate-900 dark:text-white">
+                      <Terminal size={24} />
+                      <h3 className="text-2xl font-bold">Optimal Code (Java)</h3>
+                    </div>
+                    <div className="bg-slate-900 rounded-[2rem] p-8 overflow-hidden relative group">
+                      <div className="absolute top-4 right-6 text-slate-500 text-[10px] font-bold uppercase tracking-widest">Java</div>
+                      <pre className="text-indigo-300 font-mono text-sm overflow-x-auto leading-relaxed">
+                        <code>{generatedContent.optimalCodeJava}</code>
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Complexity & Why it works */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-6">
+                    <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+                      <Activity size={24} />
+                      <h3 className="text-xl font-bold">Complexity</h3>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                        <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Time Complexity</div>
+                        <div className="text-3xl font-black text-emerald-700 dark:text-emerald-300">{generatedContent.complexityOptimal.time}</div>
+                      </div>
+                      <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                        <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Space Complexity</div>
+                        <div className="text-3xl font-black text-emerald-700 dark:text-emerald-300">{generatedContent.complexityOptimal.space}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-6">
+                    <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
+                      <Lightbulb size={24} />
+                      <h3 className="text-2xl font-bold">Why HashMap Works</h3>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-lg">
+                      {generatedContent.whyItWorks}
+                    </p>
+                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 flex items-start gap-4">
+                      <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shrink-0">
+                        <Star size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-indigo-900 dark:text-indigo-300 mb-1">Interview Tip</h4>
+                        <p className="text-sm text-indigo-700 dark:text-indigo-400 leading-relaxed">{generatedContent.interviewTip}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pattern & Similar Problems */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white space-y-6">
+                    <div className="flex items-center gap-3 text-indigo-400">
+                      <BrainCircuit size={24} />
+                      <h3 className="text-2xl font-bold">Pattern Recognition</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-indigo-400 font-bold uppercase tracking-widest text-xs">Pattern Name</h4>
+                      <div className="text-2xl font-bold">{generatedContent.patternRecognition.name}</div>
+                    </div>
+                    <p className="text-slate-400 leading-relaxed">
+                      {generatedContent.patternRecognition.description}
+                    </p>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-6">
+                    <div className="flex items-center gap-3 text-slate-900 dark:text-white">
+                      <ListChecks size={24} />
+                      <h3 className="text-2xl font-bold">Similar Problems</h3>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      {generatedContent.similarProblems.map((prob: string, i: number) => (
+                        <div key={i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-indigo-500 transition-all group cursor-pointer">
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 transition-colors">{prob}</span>
+                          <ArrowRight size={14} className="text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
             <div className="flex justify-center pt-8">

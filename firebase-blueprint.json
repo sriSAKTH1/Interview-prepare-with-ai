@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "careerPath": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "CompletedTopic": {
+      "title": "Completed Topic",
+      "description": "A topic that the user has marked as completed",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "topicId": { "type": "string" },
+        "topicName": { "type": "string" },
+        "category": { "type": "string" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "topicId", "topicName", "completedAt"]
+    },
+    "TestResult": {
+      "title": "Test Result",
+      "description": "Result of a completed assessment",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "title": { "type": "string" },
+        "score": { "type": "string" },
+        "total": { "type": "number" },
+        "correct": { "type": "number" },
+        "time": { "type": "string" },
+        "status": { "type": "string" },
+        "feedback": { "type": "string" },
+        "weaknesses": { "type": "array", "items": { "type": "string" } },
+        "improvements": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "title", "score", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/completedTopics/{id}": {
+      "schema": "CompletedTopic",
+      "description": "Topics completed by users"
+    },
+    "/testResults/{id}": {
+      "schema": "TestResult",
+      "description": "Assessment results"
+    }
+  }
+}

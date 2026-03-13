@@ -13,6 +13,7 @@ import {
   GitBranch, 
   ArrowDownAZ, 
   Search, 
+  Plus,
   ChevronLeft, 
   Menu, 
   Layout, 
@@ -44,18 +45,40 @@ import {
   DatabaseZap,
   ArrowRight
 } from 'lucide-react';
-import { LearnTopic, LearnMode } from '../types';
+import { LearnTopic, LearnMode, CompletedTopic } from '../types';
+import { ArrayVisualizer } from './ArrayVisualizer';
+import { StackVisualizer } from './StackVisualizer';
+import { QueueVisualizer } from './QueueVisualizer';
+import { LinkedListVisualizer } from './LinkedListVisualizer';
+import { SortingVisualizer } from './SortingVisualizer';
 
-export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: { 
+export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMarkComplete, completedTopics }: { 
   topic: LearnTopic, 
   setTopic: (t: LearnTopic) => void,
   mode: LearnMode,
   setMode: (m: LearnMode) => void,
-  careerPath?: string
+  careerPath?: string,
+  onMarkComplete?: (topicId: string, topicName: string, category: string) => void,
+  completedTopics?: CompletedTopic[]
 }) {
   const [learnStep, setLearnStep] = useState<'overview' | 'curriculum'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedCats, setExpandedCats] = useState<string[]>(['DATA STRUCTURES', 'ALGORITHMS', 'Linear', 'Non-Linear']);
+
+  const isCompleted = completedTopics?.some(t => t.topicId === topic);
+
+  const handleMarkComplete = () => {
+    if (onMarkComplete) {
+      const topicName = topic.charAt(0).toUpperCase() + topic.slice(1).replace('-', ' ');
+      // Determine category based on sidebarCategories or just use a generic one
+      let category = 'General';
+      if (topic.includes('sort')) category = 'Algorithms';
+      else if (['array', 'stack', 'queue', 'linked-list'].includes(topic)) category = 'Linear Data Structures';
+      else if (['tree', 'graph'].includes(topic)) category = 'Non-Linear Data Structures';
+      
+      onMarkComplete(topic, topicName, category);
+    }
+  };
 
   const toggleCat = (cat: string) => {
     setExpandedCats(prev => 
@@ -95,8 +118,33 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: {
     {
       title: "ALGORITHMS",
       items: [
-        { id: 'sorting', label: 'Sorting', icon: ArrowDownAZ },
-        { id: 'searching-graphs', label: 'Searching & Graphs', icon: Search },
+        { 
+          id: 'sorting', 
+          label: 'Sorting', 
+          icon: ArrowDownAZ,
+          subItems: [
+            { id: 'sorting', label: 'Overview', icon: Info },
+            { id: 'bubble-sort', label: 'Bubble Sort', icon: Repeat },
+            { id: 'selection-sort', label: 'Selection Sort', icon: Target },
+            { id: 'insertion-sort', label: 'Insertion Sort', icon: Plus },
+            { id: 'merge-sort', label: 'Merge Sort', icon: GitBranch },
+            { id: 'quick-sort', label: 'Quick Sort', icon: Zap },
+            { id: 'heap-sort', label: 'Heap Sort', icon: Layers },
+            { id: 'bucket-sort', label: 'Bucket Sort', icon: ShoppingCart },
+          ]
+        },
+        { 
+          id: 'searching-graphs', 
+          label: 'Searching & Graphs', 
+          icon: Search,
+          subItems: [
+            { id: 'searching-graphs', label: 'Overview', icon: Info },
+            { id: 'linear-search', label: 'Linear Search', icon: Search },
+            { id: 'binary-search', label: 'Binary Search', icon: Search },
+            { id: 'bfs', label: 'BFS (Breadth First)', icon: Network },
+            { id: 'dfs', label: 'DFS (Depth First)', icon: GitBranch },
+          ]
+        },
       ]
     }
   ];
@@ -186,30 +234,32 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950">
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: isSidebarOpen ? 280 : 80 }}
-        className="bg-white border-r border-slate-200 flex flex-col relative z-40"
+        animate={{ width: isSidebarOpen ? 300 : 80 }}
+        className="bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col relative z-40 shadow-sm"
       >
-        <div className="p-4 flex items-center justify-between border-b border-slate-100 h-16">
-          <button 
-            onClick={() => setLearnStep('overview')}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          {isSidebarOpen && <span className="font-bold text-slate-900">Curriculum</span>}
+        <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 h-16 bg-white dark:bg-slate-900">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <button 
+              onClick={() => setLearnStep('overview')}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors shrink-0"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            {isSidebarOpen && <span className="font-bold text-slate-900 dark:text-white truncate">DSA Curriculum</span>}
+          </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors mx-auto"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors shrink-0"
           >
-            {isSidebarOpen ? <ChevronLeft size={20} /> : <Menu size={20} />}
+            {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
           </button>
         </div>
 
-        <div className="flex-1 py-4 px-2 space-y-6 overflow-y-auto">
+        <div className="flex-1 py-6 px-3 space-y-8 overflow-y-auto custom-scrollbar">
           {/* Overview Item */}
           <button
             onClick={() => {
@@ -218,18 +268,35 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: {
             }}
             className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
               topic === 'overview' 
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' 
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
-            <Layout size={20} className="shrink-0" />
-            {isSidebarOpen && <span className="font-medium truncate">Overview</span>}
+            <Layout size={18} className="shrink-0" />
+            {isSidebarOpen && <span className="font-semibold text-sm truncate">Overview</span>}
           </button>
 
+          {isSidebarOpen && (
+            <div className="px-3 py-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Your Progress</span>
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">75%</span>
+              </div>
+              <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: '75%' }}
+                  className="h-full bg-indigo-600 dark:bg-indigo-500" 
+                />
+              </div>
+            </div>
+          )}
+
           {sidebarCategories.map((category, catIdx) => (
-            <div key={catIdx} className="space-y-2">
+            <div key={catIdx} className="space-y-3">
               {isSidebarOpen && (
-                <div className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <div className="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-1 h-1 bg-indigo-500 rounded-full"></span>
                   {category.title}
                 </div>
               )}
@@ -247,22 +314,22 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: {
                       }}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${
                         !item.subItems && topic === item.id 
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' 
-                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                       }`}
                     >
-                      <item.icon size={20} className="shrink-0" />
-                      {isSidebarOpen && <span className="font-medium truncate flex-1 text-left">{item.label}</span>}
+                      <item.icon size={18} className="shrink-0" />
+                      {isSidebarOpen && <span className="font-semibold text-sm truncate flex-1 text-left">{item.label}</span>}
                       {isSidebarOpen && (
                         item.subItems ? (
                           <ChevronDown 
-                            size={16} 
-                            className={`transition-transform ${expandedCats.includes(item.label) ? 'rotate-180' : ''}`} 
+                            size={14} 
+                            className={`transition-transform opacity-50 ${expandedCats.includes(item.label) ? 'rotate-180' : ''}`} 
                           />
                         ) : (
                           <ChevronRight 
-                            size={16} 
-                            className={`transition-transform ${topic === item.id ? 'text-white' : 'text-slate-300 group-hover:text-slate-500'}`} 
+                            size={14} 
+                            className={`transition-transform opacity-0 group-hover:opacity-100 ${topic === item.id ? 'text-white opacity-100' : 'text-slate-400'}`} 
                           />
                         )
                       )}
@@ -270,7 +337,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: {
                     
                     {/* Sub Items */}
                     {isSidebarOpen && item.subItems && expandedCats.includes(item.label) && (
-                      <div className="ml-4 pl-4 border-l border-slate-100 space-y-1">
+                      <div className="ml-5 pl-4 border-l border-slate-200 dark:border-slate-800 space-y-1 py-1">
                         {item.subItems.map((sub) => (
                           <button
                             key={sub.id}
@@ -278,13 +345,19 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: {
                               setTopic(sub.id as LearnTopic);
                               setMode('overview');
                             }}
-                            className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all ${
+                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all relative ${
                               topic === sub.id 
-                                ? 'bg-indigo-50 text-indigo-600 font-bold' 
-                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/20' 
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-800'
                             }`}
                           >
-                            <sub.icon size={18} className="shrink-0 opacity-70" />
+                            {topic === sub.id && (
+                              <motion.div 
+                                layoutId="activeSub"
+                                className="absolute left-[-17px] w-1 h-4 bg-indigo-600 dark:bg-indigo-500 rounded-full"
+                              />
+                            )}
+                            <sub.icon size={16} className={`shrink-0 ${topic === sub.id ? 'opacity-100' : 'opacity-50'}`} />
                             <span className="text-sm truncate">{sub.label}</span>
                           </button>
                         ))}
@@ -297,17 +370,15 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: {
           ))}
         </div>
 
-        <div className="p-4 border-t border-slate-100">
-          <div className={`flex items-center gap-3 ${isSidebarOpen ? '' : 'justify-center'}`}>
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
-              75%
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div className={`flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 ${isSidebarOpen ? '' : 'justify-center'}`}>
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100 dark:shadow-none">
+              <Trophy size={18} />
             </div>
             {isSidebarOpen && (
-              <div className="flex-1">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overall Progress</div>
-                <div className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                  <div className="h-full bg-indigo-600 w-3/4" />
-                </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Current Rank</div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">DSA Apprentice</div>
               </div>
             )}
           </div>
@@ -315,52 +386,129 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath }: {
       </motion.aside>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto bg-[#f8f9fa] p-8">
-        <div className="max-w-5xl mx-auto">
-          <AnimatePresence mode="wait">
-            {mode === 'overview' ? (
-              <motion.div
-                key={topic}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
+      <div className="flex-1 overflow-hidden bg-white dark:bg-slate-950">
+        <AnimatePresence mode="wait">
+          {mode === 'overview' ? (
+            <motion.div
+              key={topic}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              {topic === 'overview' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <LearnOverview setMode={setMode} />
+                </div>
+              )}
+              {topic !== 'overview' && (
+                <div className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                      <Book size={18} />
+                    </div>
+                    <h2 className="font-bold text-slate-900 dark:text-white capitalize">{topic.replace('-', ' ')}</h2>
+                  </div>
+                  <button
+                    onClick={handleMarkComplete}
+                    disabled={isCompleted}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                      isCompleted 
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30' 
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none'
+                    }`}
+                  >
+                    {isCompleted ? <Check size={14} /> : <CheckCircle2 size={14} />}
+                    {isCompleted ? 'Completed' : 'Mark as Complete'}
+                  </button>
+                </div>
+              )}
+              {topic === 'linear-overview' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Linear Overview" icon={Info} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'array' && <ArrayVisualizer />}
+              {topic === 'string' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Strings" icon={Type} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'stack' && <StackVisualizer />}
+              {topic === 'queue' && <QueueVisualizer />}
+              {topic === 'linked-list' && <LinkedListVisualizer />}
+              {topic === 'non-linear-overview' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Non-Linear Overview" icon={Info} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'tree' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Trees" icon={Network} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'graph' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Graphs" icon={GitBranch} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'sorting' && <SortingVisualizer initialAlgorithm="sorting" />}
+              {topic === 'bubble-sort' && <SortingVisualizer initialAlgorithm="bubble-sort" />}
+              {topic === 'selection-sort' && <SortingVisualizer initialAlgorithm="selection-sort" />}
+              {topic === 'insertion-sort' && <SortingVisualizer initialAlgorithm="insertion-sort" />}
+              {topic === 'merge-sort' && <SortingVisualizer initialAlgorithm="merge-sort" />}
+              {topic === 'quick-sort' && <SortingVisualizer initialAlgorithm="quick-sort" />}
+              {topic === 'heap-sort' && <SortingVisualizer initialAlgorithm="heap-sort" />}
+              {topic === 'bucket-sort' && <SortingVisualizer initialAlgorithm="bucket-sort" />}
+              {topic === 'searching-graphs' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Searching & Graphs" icon={Search} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'linear-search' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Linear Search" icon={Search} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'binary-search' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Binary Search" icon={Search} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'bfs' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="BFS (Breadth First)" icon={Network} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'dfs' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="DFS (Depth First)" icon={GitBranch} setMode={setMode} />
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="max-w-5xl mx-auto p-8 h-full overflow-y-auto"
+            >
+              <button 
+                onClick={() => setMode('overview')}
+                className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-medium mb-6"
               >
-                {topic === 'overview' && <LearnOverview setMode={setMode} />}
-                {topic === 'linear-overview' && <TopicContent title="Linear Overview" icon={Info} setMode={setMode} />}
-                {topic === 'array' && <TopicContent title="Arrays" icon={Grid3X3} setMode={setMode} />}
-                {topic === 'string' && <TopicContent title="Strings" icon={Type} setMode={setMode} />}
-                {topic === 'stack' && <TopicContent title="Stacks" icon={Layers} setMode={setMode} />}
-                {topic === 'queue' && <TopicContent title="Queues" icon={Users} setMode={setMode} />}
-                {topic === 'linked-list' && <TopicContent title="Linked Lists" icon={Link} setMode={setMode} />}
-                {topic === 'non-linear-overview' && <TopicContent title="Non-Linear Overview" icon={Info} setMode={setMode} />}
-                {topic === 'tree' && <TopicContent title="Trees" icon={Network} setMode={setMode} />}
-                {topic === 'graph' && <TopicContent title="Graphs" icon={GitBranch} setMode={setMode} />}
-                {topic === 'sorting' && <TopicContent title="Sorting Algorithms" icon={ArrowDownAZ} setMode={setMode} />}
-                {topic === 'searching-graphs' && <TopicContent title="Searching & Graphs" icon={Search} setMode={setMode} />}
-              </motion.div>
-            ) : (
-              <motion.div
-                key={mode}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.2 }}
-              >
-                <button 
-                  onClick={() => setMode('overview')}
-                  className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-medium mb-6"
-                >
-                  <ArrowLeft size={18} />
-                  Back to {topic.charAt(0).toUpperCase() + topic.slice(1).replace('-', ' ')}
-                </button>
-                {mode === 'flashcards' && <FlashcardMode />}
-                {mode === 'quiz' && <QuizMode />}
-                {mode === 'spaced' && <SpacedRepetitionMode />}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                <ArrowLeft size={18} />
+                Back to {topic.charAt(0).toUpperCase() + topic.slice(1).replace('-', ' ')}
+              </button>
+              {mode === 'flashcards' && <FlashcardMode />}
+              {mode === 'quiz' && <QuizMode />}
+              {mode === 'spaced' && <SpacedRepetitionMode />}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -390,34 +538,34 @@ function LearnOverview({ setMode }: { setMode: (m: LearnMode) => void }) {
       className="space-y-12 pb-20"
     >
       {/* Hero Section */}
-      <motion.div variants={itemVariants} className="relative overflow-hidden bg-indigo-600 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-200">
+      <motion.div variants={itemVariants} className="relative overflow-hidden bg-slate-900 dark:bg-indigo-950 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-slate-200 dark:shadow-none">
         <div className="relative z-10 max-w-2xl">
           <div className="flex items-center gap-2 mb-4">
-            <Book size={20} className="text-indigo-200" />
-            <span className="text-indigo-100 font-bold text-sm uppercase tracking-widest">Course Overview</span>
+            <Book size={20} className="text-indigo-400" />
+            <span className="text-slate-400 font-bold text-sm uppercase tracking-widest">Course Overview</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-            📘 Data Structures & Algorithms (DSA)
+            📘 Data Structures & Algorithms
           </h1>
-          <p className="text-indigo-100 text-lg leading-relaxed mb-8">
+          <p className="text-slate-400 text-lg leading-relaxed mb-8">
             Master the foundation of software development and problem-solving. Build efficient code and crack top technical interviews.
           </p>
           <div className="flex flex-wrap gap-4">
             <button 
               onClick={() => setMode('flashcards')}
-              className="px-6 py-3 bg-white text-indigo-600 rounded-2xl font-bold hover:bg-indigo-50 transition-all flex items-center gap-2"
+              className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20"
             >
               <Zap size={18} /> Start Learning
             </button>
-            <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/30 rounded-2xl border border-indigo-400/30 backdrop-blur-sm">
-              <CheckCircle2 size={16} className="text-indigo-200" />
-              <span className="text-sm font-medium">Industry Standard Curriculum</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
+              <CheckCircle2 size={16} className="text-indigo-400" />
+              <span className="text-sm font-medium text-slate-300">Industry Standard Curriculum</span>
             </div>
           </div>
         </div>
         {/* Decorative elements */}
-        <div className="absolute top-[-10%] right-[-10%] w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-50" />
-        <div className="absolute bottom-[-20%] left-[-5%] w-60 h-60 bg-indigo-700 rounded-full blur-3xl opacity-50" />
+        <div className="absolute top-[-10%] right-[-10%] w-80 h-80 bg-indigo-600/20 rounded-full blur-3xl opacity-50" />
+        <div className="absolute bottom-[-20%] left-[-5%] w-60 h-60 bg-indigo-900/20 rounded-full blur-3xl opacity-50" />
       </motion.div>
 
       {/* Why DSA? */}
