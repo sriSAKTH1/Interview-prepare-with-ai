@@ -9,14 +9,16 @@ export function Dashboard({
   careerPath, 
   setCareerPath,
   completedTopics = [],
-  user
+  user,
+  onViewResult
 }: { 
   history: TestResult[], 
   onStartTest: (config: any) => void,
   careerPath: string,
   setCareerPath: (path: string) => void,
   completedTopics?: CompletedTopic[],
-  user?: any
+  user?: any,
+  onViewResult?: (result: TestResult) => void
 }) {
   const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'AI Engineer'];
 
@@ -125,6 +127,7 @@ export function Dashboard({
                     time={item.time} 
                     score={item.score} 
                     status={item.status} 
+                    onClick={() => onViewResult?.(item)}
                   />
                 ))
               ) : (
@@ -205,9 +208,12 @@ function StatCard({ title, value, change, icon: Icon, color, bgColor }: any) {
   );
 }
 
-function ActivityItem({ title, time, score, status }: any) {
+function ActivityItem({ title, time, score, status, onClick }: any) {
   return (
-    <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+    <div 
+      onClick={onClick}
+      className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+    >
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
           <Layout size={18} />

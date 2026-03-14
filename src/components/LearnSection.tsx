@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
+  X,
+  Star,
   Equal, 
   Info, 
   Grid3X3, 
@@ -43,27 +45,38 @@ import {
   Cpu,
   Globe2,
   DatabaseZap,
-  ArrowRight
+  ArrowRight,
+  HelpCircle,
+  MessageSquare,
+  FileText,
+  ListChecks,
+  Code,
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 import { LearnTopic, LearnMode, CompletedTopic } from '../types';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { ArrayVisualizer } from './ArrayVisualizer';
 import { StackVisualizer } from './StackVisualizer';
 import { QueueVisualizer } from './QueueVisualizer';
 import { LinkedListVisualizer } from './LinkedListVisualizer';
 import { SortingVisualizer } from './SortingVisualizer';
 
-export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMarkComplete, completedTopics }: { 
+export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMarkComplete, completedTopics, user }: { 
   topic: LearnTopic, 
   setTopic: (t: LearnTopic) => void,
   mode: LearnMode,
   setMode: (m: LearnMode) => void,
   careerPath?: string,
   onMarkComplete?: (topicId: string, topicName: string, category: string) => void,
-  completedTopics?: CompletedTopic[]
+  completedTopics?: CompletedTopic[],
+  user?: any
 }) {
   const [learnStep, setLearnStep] = useState<'overview' | 'curriculum'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedCats, setExpandedCats] = useState<string[]>(['DATA STRUCTURES', 'ALGORITHMS', 'Linear', 'Non-Linear']);
+  const [showJourneyModal, setShowJourneyModal] = useState(false);
 
   const isCompleted = completedTopics?.some(t => t.topicId === topic);
 
@@ -233,6 +246,16 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
     );
   }
 
+  const totalTopics = sidebarCategories.reduce((acc, cat) => {
+    return acc + cat.items.reduce((itemAcc, item) => {
+      return itemAcc + (item.subItems ? item.subItems.length : 1);
+    }, 0);
+  }, 0);
+  
+  const completionPercentage = totalTopics > 0 
+    ? Math.min(100, Math.round((completedTopics.length / totalTopics) * 100))
+    : 0;
+
   return (
     <div className="flex h-full overflow-hidden bg-white dark:bg-slate-950">
       {/* Sidebar */}
@@ -276,16 +299,31 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             {isSidebarOpen && <span className="font-semibold text-sm truncate">Overview</span>}
           </button>
 
+          <button
+            onClick={() => {
+              setTopic('questions-approach');
+              setMode('overview');
+            }}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+              topic === 'questions-approach' 
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
+            }`}
+          >
+            <HelpCircle size={18} className="shrink-0" />
+            {isSidebarOpen && <span className="font-semibold text-sm truncate">Questions Approach</span>}
+          </button>
+
           {isSidebarOpen && (
             <div className="px-3 py-2">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Your Progress</span>
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">75%</span>
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">{completionPercentage}%</span>
               </div>
               <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: '75%' }}
+                  animate={{ width: `${completionPercentage}%` }}
                   className="h-full bg-indigo-600 dark:bg-indigo-500" 
                 />
               </div>
@@ -358,7 +396,10 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                               />
                             )}
                             <sub.icon size={16} className={`shrink-0 ${topic === sub.id ? 'opacity-100' : 'opacity-50'}`} />
-                            <span className="text-sm truncate">{sub.label}</span>
+                            <span className="text-sm truncate flex-1">{sub.label}</span>
+                            {completedTopics.some(t => t.topicId === sub.id) && (
+                              <CheckCircle2 size={14} className="text-emerald-500" />
+                            )}
                           </button>
                         ))}
                       </div>
@@ -399,7 +440,12 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             >
               {topic === 'overview' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <LearnOverview setMode={setMode} />
+                  <LearnOverview setMode={setMode} onStartJourney={() => setShowJourneyModal(true)} />
+                </div>
+              )}
+              {topic === 'questions-approach' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <QuestionsApproach />
                 </div>
               )}
               {topic !== 'overview' && (
@@ -509,12 +555,131 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             </motion.div>
           )}
         </AnimatePresence>
+
+        <AnimatePresence>
+          {showJourneyModal && (
+            <StartJourneyModal 
+              onClose={() => setShowJourneyModal(false)} 
+              onComplete={(data) => {
+                if (user) {
+                  const userRef = doc(db, 'users', user.uid);
+                  setDoc(userRef, { journeyData: data }, { merge: true })
+                    .catch(err => handleFirestoreError(err, OperationType.UPDATE, 'users'));
+                }
+                setShowJourneyModal(false);
+                setMode('flashcards');
+              }}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-function LearnOverview({ setMode }: { setMode: (m: LearnMode) => void }) {
+function StartJourneyModal({ onClose, onComplete }: { onClose: () => void, onComplete: (data: any) => void }) {
+  const [language, setLanguage] = useState('Java');
+  const [langRating, setLangRating] = useState(0);
+  const [dsaRating, setDsaRating] = useState(0);
+
+  const languages = ['Java', 'Python', 'C++', 'JavaScript', 'C#', 'Go'];
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800"
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 transition-colors"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto mb-4">
+            <Rocket size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Start Your Journey</h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">Tell us about your current skills</p>
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Choose Language</label>
+            <div className="grid grid-cols-3 gap-2">
+              {languages.map(lang => (
+                <button
+                  key={lang}
+                  onClick={() => setLanguage(lang)}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border-2 ${
+                    language === lang 
+                      ? 'bg-indigo-600 border-indigo-600 text-white' 
+                      : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-200'
+                  }`}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Rate your {language} skill</label>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button
+                  key={star}
+                  onClick={() => setLangRating(star)}
+                  className={`p-1 transition-all ${langRating >= star ? 'text-amber-400 scale-110' : 'text-slate-200 dark:text-slate-700'}`}
+                >
+                  <Star size={28} fill={langRating >= star ? 'currentColor' : 'none'} />
+                </button>
+              ))}
+              <span className="ml-2 text-sm font-bold text-slate-400">{langRating}/5</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Rate your DSA skill</label>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button
+                  key={star}
+                  onClick={() => setDsaRating(star)}
+                  className={`p-1 transition-all ${dsaRating >= star ? 'text-indigo-500 scale-110' : 'text-slate-200 dark:text-slate-700'}`}
+                >
+                  <Star size={28} fill={dsaRating >= star ? 'currentColor' : 'none'} />
+                </button>
+              ))}
+              <span className="ml-2 text-sm font-bold text-slate-400">{dsaRating}/5</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => onComplete({ language, langRating, dsaRating })}
+            disabled={!langRating || !dsaRating}
+            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 dark:shadow-none disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          >
+            Let's Go!
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function LearnOverview({ setMode, onStartJourney }: { setMode: (m: LearnMode) => void, onStartJourney?: () => void }) {
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -552,7 +717,7 @@ function LearnOverview({ setMode }: { setMode: (m: LearnMode) => void }) {
           </p>
           <div className="flex flex-wrap gap-4">
             <button 
-              onClick={() => setMode('flashcards')}
+              onClick={() => onStartJourney ? onStartJourney() : setMode('flashcards')}
               className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20"
             >
               <Zap size={18} /> Start Learning
@@ -740,7 +905,7 @@ function LearnOverview({ setMode }: { setMode: (m: LearnMode) => void }) {
         </p>
         <div className="pt-4">
           <button 
-            onClick={() => setMode('flashcards')}
+            onClick={() => onStartJourney ? onStartJourney() : setMode('flashcards')}
             className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
           >
             Start Your Journey
@@ -997,6 +1162,157 @@ function SpacedRepetitionMode() {
         </div>
       </div>
     </div>
+  );
+}
+
+
+function QuestionsApproach() {
+  const steps = [
+    {
+      icon: Search,
+      title: "1. Understand the Problem",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      points: [
+        "Read the problem statement carefully twice.",
+        "Identify the inputs and their types (e.g., integer array, string).",
+        "Identify the expected output and its type.",
+        "Clarify constraints (e.g., time limit, memory limit, input size).",
+        "Ask clarifying questions (e.g., Can the input be empty? Are there negative numbers?)."
+      ]
+    },
+    {
+      icon: Brain,
+      title: "2. Brainstorm & Brute Force",
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      points: [
+        "Think of the simplest possible solution (Brute Force).",
+        "Don't worry about efficiency yet, just focus on correctness.",
+        "Write down the steps for the brute force approach.",
+        "Calculate the time and space complexity of this approach."
+      ]
+    },
+    {
+      icon: Zap,
+      title: "3. Optimize & Pattern Recognition",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      points: [
+        "Look for patterns or repeated work in the brute force solution.",
+        "Can we use a better data structure? (e.g., Hash Map for O(1) lookup).",
+        "Can we use a specific algorithm? (e.g., Two Pointers, Sliding Window, Binary Search).",
+        "Consider trade-offs between time and space complexity.",
+        "Aim for the most optimal complexity based on constraints."
+      ]
+    },
+    {
+      icon: FileText,
+      title: "4. Dry Run with Examples",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      points: [
+        "Take a small sample input and trace your logic step-by-step.",
+        "Use edge cases (e.g., empty input, single element, all duplicates).",
+        "Verify if the logic produces the correct output.",
+        "This helps catch logical errors before you start coding."
+      ]
+    },
+    {
+      icon: Code,
+      title: "5. Implementation",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      points: [
+        "Write clean, readable code with meaningful variable names.",
+        "Follow the logic you dry-ran in the previous step.",
+        "Handle edge cases explicitly.",
+        "Keep the code modular if possible."
+      ]
+    },
+    {
+      icon: ShieldCheck,
+      title: "6. Review & Analyze",
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      points: [
+        "Double-check your code for syntax or logical errors.",
+        "Re-calculate the final time and space complexity.",
+        "Explain your solution clearly (if in an interview).",
+        "Think about how the solution could be further improved or scaled."
+      ]
+    }
+  ];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-12 pb-20"
+    >
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold uppercase tracking-widest">
+          <Target size={14} /> Problem Solving Guide
+        </div>
+        <h1 className="text-4xl font-bold text-slate-900 dark:text-white">How to Approach DSA Questions</h1>
+        <p className="text-slate-500 dark:text-slate-400 text-lg max-w-3xl">
+          A systematic framework to tackle any coding problem, from understanding requirements to delivering an optimized solution.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {steps.map((step, index) => (
+          <motion.div
+            key={index}
+            whileHover={{ y: -5 }}
+            className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all"
+          >
+            <div className={`w-12 h-12 ${step.bg} dark:bg-slate-800 ${step.color} rounded-xl flex items-center justify-center mb-6`}>
+              <step.icon size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">{step.title}</h3>
+            <ul className="space-y-3">
+              {step.points.map((point, pIndex) => (
+                <li key={pIndex} className="flex gap-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                  <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-2 shrink-0" />
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="bg-slate-900 dark:bg-indigo-950 rounded-[2.5rem] p-10 text-white relative overflow-hidden">
+        <div className="relative z-10 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+              <Lightbulb size={20} className="text-amber-400" />
+            </div>
+            <h2 className="text-2xl font-bold">Pro Interview Tips</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div className="space-y-2">
+              <h4 className="font-bold text-indigo-300">Think Aloud</h4>
+              <p className="text-slate-400 text-sm">Always communicate your thought process. Interviewers are more interested in HOW you think than just the final code.</p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-bold text-indigo-300">Don't Jump to Code</h4>
+              <p className="text-slate-400 text-sm">Wait until the interviewer agrees with your logic. Coding a wrong approach is a waste of time.</p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-bold text-indigo-300">Handle Constraints</h4>
+              <p className="text-slate-400 text-sm">If N is 10^5, an O(N^2) solution will likely TLE. Aim for O(N log N) or O(N).</p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-bold text-indigo-300">Test Your Code</h4>
+              <p className="text-slate-400 text-sm">Before saying "I'm done", manually trace your code with a small example to find bugs.</p>
+            </div>
+          </div>
+        </div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-3xl" />
+      </div>
+    </motion.div>
   );
 }
 

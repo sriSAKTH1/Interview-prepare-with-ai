@@ -52,10 +52,11 @@ interface Question {
   id: string;
   question: string;
   options: string[];
-  correctAnswer: number;
+  correctAnswer: number | string;
   explanation: string;
   distractorAnalysis: string[];
   category?: 'Aptitude' | 'Technical';
+  type?: 'mcq' | 'fill';
 }
 
 const APTITUDE_CATEGORIES = {
@@ -64,16 +65,25 @@ const APTITUDE_CATEGORIES = {
   'Verbal': ['Reading Comprehension', 'Grammar', 'Vocabulary', 'Synonyms & Antonyms', 'Sentence Correction', 'Para Jumbles', 'Idioms & Phrases']
 };
 
-export function TestSection({ onComplete, initialMode, initialCompany, initialRole, initialExamName, initialContext }: { 
+export function TestSection({ 
+  onComplete, 
+  initialMode, 
+  initialCompany, 
+  initialRole, 
+  initialExamName, 
+  initialContext,
+  viewResult
+}: { 
   onComplete: (result: TestResult) => void,
   initialMode?: TestMode,
   initialCompany?: string,
   initialRole?: string,
   initialExamName?: string,
-  initialContext?: string
+  initialContext?: string,
+  viewResult?: TestResult | null
 }) {
   const [mode, setMode] = useState<TestMode>(initialMode || 'overview');
-  const [testStep, setTestStep] = useState<'overview' | 'difficulty' | 'role-selection' | 'topic-selection' | 'company-config' | 'generating' | 'pre-test-summary' | 'rules' | 'active' | 'results' | 'coding-active' | 'coding-results' | 'aptitude-config' | 'io-config'>(initialMode ? 'generating' : 'overview');
+  const [testStep, setTestStep] = useState<'overview' | 'difficulty' | 'role-selection' | 'topic-selection' | 'company-config' | 'generating' | 'pre-test-summary' | 'rules' | 'active' | 'results' | 'coding-active' | 'coding-results' | 'aptitude-config' | 'io-config'>(viewResult ? 'results' : (initialMode ? 'generating' : 'overview'));
   const [ioLanguage, setIoLanguage] = useState<string>('C');
   const [aptitudeSubMode, setAptitudeSubMode] = useState<'custom' | 'random' | 'company'>('random');
   const [selectedAptitudeCategories, setSelectedAptitudeCategories] = useState<string[]>([]);
@@ -172,7 +182,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
   // Test State
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState<number[]>([]);
+  const [userAnswers, setUserAnswers] = useState<(number | string)[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [testStartTime, setTestStartTime] = useState<number>(0);
@@ -204,10 +214,18 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
   const topics = ['Random', 'Arrays & Hashing', 'Two Pointers', 'Sliding Window', 'Stack', 'Binary Search', 'Linked List', 'Trees', 'Graphs', 'Dynamic Programming', 'Bit Manipulation'];
 
   useEffect(() => {
-    if (initialMode) {
+    if (viewResult) {
+      if (viewResult.questions) setQuestions(viewResult.questions);
+      if (viewResult.userAnswers) setUserAnswers(viewResult.userAnswers);
+      setTestStep('results');
+    }
+  }, [viewResult]);
+
+  useEffect(() => {
+    if (initialMode && !viewResult) {
       generateQuestions(initialMode, initialCompany, initialRole, initialExamName, initialContext);
     }
-  }, [initialMode]);
+  }, [initialMode, viewResult]);
 
   const generateQuestions = async (overrideMode?: TestMode, overrideCompany?: string, overrideRole?: string, overrideExamName?: string, overrideContext?: string) => {
     const activeMode = overrideMode || mode;
@@ -226,11 +244,14 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
         const prompt = `Generate 10 high-quality "Predict the Output" questions for ${ioLanguage === 'Zoho question' ? 'Zoho interview pattern' : ioLanguage}.
         Difficulty: ${difficulty}
         
-        For each question:
-        1. Provide a code snippet in ${ioLanguage === 'Zoho question' ? 'C/C++/Java' : ioLanguage}.
-        2. The question should ask "What is the output of the following code?".
-        3. Provide 4 options, where one is the correct output.
-        4. Provide a detailed explanation of how the code executes.
+        Rules:
+        1. Mix of question types: 
+           - "mcq": Multiple choice questions with 4 options.
+           - "fill": Fill in the blank questions where user must type the exact output.
+        2. For "mcq", correctAnswer is the index (0-3) as a string.
+        3. For "fill", correctAnswer is the exact string output. options should be an empty array.
+        4. Each question must include a code snippet in markdown.
+        5. For "Zoho question", focus on C/C++ dry run, pattern printing, and logical series.
         
         Return the response as a JSON object with the following schema:
         {
@@ -246,11 +267,12 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
           "questions": [
             {
               "id": "string",
+              "type": "mcq" | "fill",
               "question": "string (include the code snippet in markdown code blocks)",
-              "options": ["string", "string", "string", "string"],
-              "correctAnswer": number (0-3),
+              "options": ["string"],
+              "correctAnswer": "string",
               "explanation": "string",
-              "distractorAnalysis": ["string", "string", "string", "string"]
+              "distractorAnalysis": ["string"]
             }
           ]
         }`;
@@ -283,13 +305,14 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                     type: Type.OBJECT,
                     properties: {
                       id: { type: Type.STRING },
+                      type: { type: Type.STRING, enum: ["mcq", "fill"] },
                       question: { type: Type.STRING },
-                      options: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: 4, maxItems: 4 },
-                      correctAnswer: { type: Type.INTEGER },
+                      options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      correctAnswer: { type: Type.STRING },
                       explanation: { type: Type.STRING },
                       distractorAnalysis: { type: Type.ARRAY, items: { type: Type.STRING } }
                     },
-                    required: ["id", "question", "options", "correctAnswer", "explanation", "distractorAnalysis"]
+                    required: ["id", "type", "question", "options", "correctAnswer", "explanation", "distractorAnalysis"]
                   }
                 }
               },
@@ -301,7 +324,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
         const data = JSON.parse(result.text);
         setQuestions(data.questions);
         setTestInsights(data.insights);
-        setUserAnswers(new Array(data.questions.length).fill(-1));
+        setUserAnswers(new Array(data.questions.length).fill(''));
         setTestStep('pre-test-summary');
         setIsGenerating(false);
         return;
@@ -938,6 +961,18 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
     }, 1000);
   };
 
+  const getCorrectCount = () => {
+    let count = 0;
+    userAnswers.forEach((ans, idx) => {
+      const q = questions[idx];
+      if (!q || ans === undefined || ans === null || ans === '') return;
+      const userAnswer = ans.toString().trim().toLowerCase();
+      const correctAnswer = q.correctAnswer.toString().trim().toLowerCase();
+      if (userAnswer === correctAnswer) count++;
+    });
+    return count;
+  };
+
   const finishTest = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     
@@ -961,9 +996,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
 
     setTestStep('results');
     
-    const correctCount = userAnswers.reduce((acc, ans, idx) => {
-      return ans === questions[idx].correctAnswer ? acc + 1 : acc;
-    }, 0);
+    const correctCount = getCorrectCount();
 
     const score = `${correctCount}/${questions.length}`;
     const percentage = (correctCount / questions.length) * 100;
@@ -982,13 +1015,15 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
       status: 'Completed',
       feedback: percentage >= 70 ? "Great job! You have a solid understanding." : "Keep practicing! Review the explanations to improve.",
       weaknesses: [],
-      improvements: ["Review the topics you missed", "Try a higher difficulty next time"]
+      improvements: ["Review the topics you missed", "Try a higher difficulty next time"],
+      questions: questions,
+      userAnswers: userAnswers
     });
   };
 
-  const handleAnswerSelect = (optionIndex: number) => {
+  const handleAnswerSelect = (answer: number | string) => {
     const newAnswers = [...userAnswers];
-    newAnswers[currentQuestionIndex] = optionIndex;
+    newAnswers[currentQuestionIndex] = answer;
     setUserAnswers(newAnswers);
   };
 
@@ -1888,28 +1923,44 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                   </ReactMarkdown>
                 </div>
                 
-                <div className="grid grid-cols-1 gap-3">
-                  {questions[currentQuestionIndex].options.map((option, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleAnswerSelect(idx)}
-                      className={`p-5 rounded-2xl border-2 text-left transition-all flex items-center justify-between group ${
-                        userAnswers[currentQuestionIndex] === idx
-                          ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
-                          : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
-                      }`}
-                    >
-                      <span className="font-medium">{option}</span>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                        userAnswers[currentQuestionIndex] === idx
-                          ? 'border-indigo-600 bg-indigo-600 text-white'
-                          : 'border-slate-200 dark:border-slate-700 group-hover:border-slate-300 dark:group-hover:border-slate-600'
-                      }`}>
-                        {userAnswers[currentQuestionIndex] === idx && <Check size={14} strokeWidth={3} />}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {questions[currentQuestionIndex].type === 'fill' ? (
+                  <div className="space-y-4">
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      Type your output here:
+                    </label>
+                    <input
+                      type="text"
+                      value={userAnswers[currentQuestionIndex] || ''}
+                      onChange={(e) => handleAnswerSelect(e.target.value)}
+                      placeholder="Enter the exact output..."
+                      className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-indigo-600 outline-none transition-all font-mono"
+                    />
+                    <p className="text-xs text-slate-500">Note: Output must be exact (case-insensitive, including spaces if any).</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {questions[currentQuestionIndex].options.map((option, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleAnswerSelect(idx)}
+                        className={`p-5 rounded-2xl border-2 text-left transition-all flex items-center justify-between group ${
+                          userAnswers[currentQuestionIndex] === idx || userAnswers[currentQuestionIndex] === idx.toString()
+                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                            : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <span className="font-medium">{option}</span>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                          userAnswers[currentQuestionIndex] === idx || userAnswers[currentQuestionIndex] === idx.toString()
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                            : 'border-slate-200 dark:border-slate-700 group-hover:border-slate-300 dark:group-hover:border-slate-600'
+                        }`}>
+                          {(userAnswers[currentQuestionIndex] === idx || userAnswers[currentQuestionIndex] === idx.toString()) && <Check size={14} strokeWidth={3} />}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-8 border-t border-slate-100 dark:border-slate-800">
@@ -2350,14 +2401,14 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                     <>
                       <div className="text-center">
                         <div className="text-4xl font-bold text-white">
-                          {userAnswers.reduce((acc, ans, idx) => ans === questions[idx].correctAnswer ? acc + 1 : acc, 0)}
+                          {getCorrectCount()}
                           <span className="text-slate-400 text-xl">/{questions.length}</span>
                         </div>
                         <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mt-1">MCQ Score</div>
                       </div>
                       <div className="text-center">
                         <div className="text-4xl font-bold text-emerald-400">
-                          {Math.round((userAnswers.reduce((acc, ans, idx) => ans === questions[idx].correctAnswer ? acc + 1 : acc, 0) / questions.length) * 100)}%
+                          {Math.round((getCorrectCount() / questions.length) * 100)}%
                         </div>
                         <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mt-1">MCQ Accuracy</div>
                       </div>
@@ -2415,7 +2466,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">MCQ Review & Explanations</h2>
                   <div className="space-y-4">
                     {questions.map((q, idx) => {
-                      const isCorrect = userAnswers[idx] === q.correctAnswer;
+                      const isCorrect = userAnswers[idx]?.toString().trim().toLowerCase() === q.correctAnswer?.toString().trim().toLowerCase();
                       return (
                         <div key={q.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 space-y-4">
                           <div className="flex items-start justify-between gap-4">
@@ -2457,19 +2508,41 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {q.options.map((opt, optIdx) => {
-                              let style = "border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400";
-                              if (optIdx === q.correctAnswer) style = "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-bold";
-                              else if (optIdx === userAnswers[idx] && !isCorrect) style = "border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-bold";
-                              
-                              return (
-                                <div key={optIdx} className={`p-4 rounded-xl border-2 text-sm ${style}`}>
-                                  {opt}
+                          {q.type === 'fill' ? (
+                            <div className="space-y-3">
+                              <div className="flex flex-col gap-2">
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Your Answer:</span>
+                                <div className={`p-4 rounded-xl border-2 text-sm font-mono ${isCorrect ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                                  {userAnswers[idx] || '(No answer)'}
                                 </div>
-                              );
-                            })}
-                          </div>
+                              </div>
+                              {!isCorrect && (
+                                <div className="flex flex-col gap-2">
+                                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Correct Answer:</span>
+                                  <div className="p-4 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-mono font-bold">
+                                    {q.correctAnswer}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {q.options.map((opt, optIdx) => {
+                                const isCorrectOption = optIdx.toString() === q.correctAnswer.toString();
+                                const isUserSelected = userAnswers[idx]?.toString() === optIdx.toString();
+                                
+                                let style = "border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400";
+                                if (isCorrectOption) style = "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-bold";
+                                else if (isUserSelected && !isCorrect) style = "border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-bold";
+                                
+                                return (
+                                  <div key={optIdx} className={`p-4 rounded-xl border-2 text-sm ${style}`}>
+                                    {opt}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
 
                           <div className="space-y-4">
                             <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-start gap-3">
@@ -2499,7 +2572,7 @@ export function TestSection({ onComplete, initialMode, initialCompany, initialRo
                               </div>
                             </div>
 
-                            {!isCorrect && userAnswers[idx] !== -1 && (
+                            {!isCorrect && userAnswers[idx] !== -1 && q.type !== 'fill' && (
                               <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-start gap-3 border border-red-100 dark:border-red-900/30">
                                 <AlertCircle className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" size={18} />
                                 <div className="space-y-1">

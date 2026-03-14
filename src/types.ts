@@ -1,5 +1,5 @@
 export type Section = 'home' | 'learn' | 'prepare' | 'test';
-export type LearnTopic = 'overview' | 'linear-overview' | 'array' | 'string' | 'stack' | 'queue' | 'linked-list' | 'non-linear-overview' | 'tree' | 'graph' | 'sorting' | 'bubble-sort' | 'selection-sort' | 'insertion-sort' | 'merge-sort' | 'quick-sort' | 'heap-sort' | 'bucket-sort' | 'searching-graphs' | 'linear-search' | 'binary-search' | 'bfs' | 'dfs';
+export type LearnTopic = 'overview' | 'questions-approach' | 'linear-overview' | 'array' | 'string' | 'stack' | 'queue' | 'linked-list' | 'non-linear-overview' | 'tree' | 'graph' | 'sorting' | 'bubble-sort' | 'selection-sort' | 'insertion-sort' | 'merge-sort' | 'quick-sort' | 'heap-sort' | 'bucket-sort' | 'searching-graphs' | 'linear-search' | 'binary-search' | 'bfs' | 'dfs';
 export type LearnMode = 'overview' | 'flashcards' | 'quiz' | 'spaced';
 export type TestMode = 'overview' | 'mcq-dsa' | 'mcq-role' | 'company-round' | 'aptitude' | 'comprehensive-company-test' | 'input-output';
 
@@ -52,6 +52,8 @@ export interface TestResult {
   weaknesses: string[];
   improvements: string[];
   topicAnalysis?: TopicPerformance[];
+  questions?: any[];
+  userAnswers?: (number | string)[];
 }
 
 export interface CompletedTopic {

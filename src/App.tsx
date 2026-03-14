@@ -91,6 +91,7 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [testHistory, setTestHistory] = useState<TestResult[]>([]);
   const [completedTopics, setCompletedTopics] = useState<CompletedTopic[]>([]);
+  const [viewingResult, setViewingResult] = useState<TestResult | null>(null);
   const [testConfig, setTestConfig] = useState<{ 
     mode: any, 
     company?: string, 
@@ -284,7 +285,10 @@ export default function App() {
               {navItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => handleNavClick(item.id as Section)}
+                  onClick={() => {
+                    handleNavClick(item.id as Section);
+                    if (item.id === 'home') setViewingResult(null);
+                  }}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                     activeSection === item.id 
                       ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' 
@@ -419,6 +423,10 @@ export default function App() {
                 careerPath={careerPath}
                 setCareerPath={setCareerPath}
                 user={user}
+                onViewResult={(result) => {
+                  setViewingResult(result);
+                  setActiveSection('test');
+                }}
               />
             </motion.div>
           )}
@@ -440,6 +448,7 @@ export default function App() {
                 careerPath={careerPath}
                 onMarkComplete={markTopicComplete}
                 completedTopics={completedTopics}
+                user={user}
               />
             </motion.div>
           )}
@@ -472,6 +481,7 @@ export default function App() {
                 initialRole={testConfig?.role || careerPath}
                 initialExamName={testConfig?.examName}
                 initialContext={testConfig?.context}
+                viewResult={viewingResult}
               />
             </motion.div>
           )}
