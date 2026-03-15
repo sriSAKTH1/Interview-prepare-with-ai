@@ -12,32 +12,51 @@ import {
   CheckCircle2, 
   AlertCircle,
   User,
+  Settings,
   PieChart as PieChartIcon,
   Activity,
   Zap,
   ArrowRight,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Github
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CodingPlatformStats, DSATopicProgress, InterviewReadinessScore } from '../types';
 import { fetchAllPlatformStats, PlatformStats } from '../services/platformService';
 
-export function CodingDashboard({ onStartTest }: { onStartTest: (config: any) => void }) {
+export function CodingDashboard({ 
+  onStartTest,
+  initialStats = [],
+  initialUsernames = {
+    leetcode: '',
+    codeforces: '',
+    codechef: '',
+    hackerrank: '',
+    github: ''
+  },
+  onGoToSettings
+}: { 
+  onStartTest: (config: any) => void,
+  initialStats?: PlatformStats[],
+  initialUsernames?: any,
+  onGoToSettings?: () => void
+}) {
   const [usernames, setUsernames] = useState(() => {
     const saved = localStorage.getItem('coding_usernames');
-    return saved ? JSON.parse(saved) : {
-      leetcode: '',
-      codeforces: '',
-      codechef: '',
-      hackerrank: ''
-    };
+    return saved ? JSON.parse(saved) : initialUsernames;
   });
 
-  const [platformStats, setPlatformStats] = useState<PlatformStats[]>([]);
+  const [platformStats, setPlatformStats] = useState<PlatformStats[]>(initialStats);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialStats.length > 0 && platformStats.length === 0) {
+      setPlatformStats(initialStats);
+    }
+  }, [initialStats]);
 
   const [dsaProgress, setDsaProgress] = useState<DSATopicProgress[]>([
     { topic: 'Arrays', total: 100, solved: 80, percentage: 80 },
@@ -54,17 +73,73 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (config: any) =>
   ]);
 
   const [readinessScore, setReadinessScore] = useState<InterviewReadinessScore>({
-    overall: 72,
-    dsaPractice: 65,
+    overall: 0,
+    dsaPractice: 0,
     aptitude: 80,
-    codingActivity: 75,
-    mockInterview: 68,
+    codingActivity: 0,
+    mockInterview: 0,
     suggestions: [
-      'Focus more on Graph algorithms and Dynamic Programming.',
-      'Improve your mock interview performance by practicing behavioral questions.',
+      'Connect your coding platforms to see your interview readiness score.',
       'Maintain your daily streak on LeetCode to boost coding activity score.'
     ]
   });
+
+  useEffect(() => {
+    if (platformStats.length > 0) {
+      const totalSolved = platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0);
+      
+      // Update DSA progress based on total solved
+      // We'll distribute the total solved across topics proportionally to their difficulty/importance
+      const weights = [
+        { topic: 'Arrays', weight: 0.15, total: 100 },
+        { topic: 'Strings', weight: 0.12, total: 80 },
+        { topic: 'Binary Search', weight: 0.08, total: 50 },
+        { topic: 'Stack', weight: 0.06, total: 40 },
+        { topic: 'Queue', weight: 0.04, total: 30 },
+        { topic: 'Linked List', weight: 0.08, total: 60 },
+        { topic: 'Trees', weight: 0.12, total: 120 },
+        { topic: 'Graphs', weight: 0.10, total: 100 },
+        { topic: 'Dynamic Programming', weight: 0.12, total: 150 },
+        { topic: 'Greedy Algorithms', weight: 0.08, total: 70 },
+        { topic: 'Backtracking', weight: 0.05, total: 50 }
+      ];
+
+      const newProgress = weights.map(w => {
+        const solved = Math.min(w.total, Math.round(totalSolved * w.weight));
+        return {
+          topic: w.topic,
+          total: w.total,
+          solved: solved,
+          percentage: Math.round((solved / w.total) * 100)
+        };
+      });
+      setDsaProgress(newProgress);
+
+      const avgRating = platformStats.filter(s => s.rating && s.rating > 0).reduce((acc, curr, _, arr) => acc + (curr.rating || 0) / arr.length, 0);
+      
+      // Dynamic calculation logic
+      const dsaScore = Math.min(100, Math.round((totalSolved / 500) * 100));
+      const activityScore = Math.min(100, platformStats.length * 20 + (totalSolved > 100 ? 20 : 0));
+      const mockScore = 65 + Math.floor(Math.random() * 10); // Simulated for now
+      
+      const overall = Math.round((dsaScore + 80 + activityScore + mockScore) / 4);
+      
+      const newSuggestions = [];
+      if (dsaScore < 50) newSuggestions.push('Focus on solving more problems on LeetCode and Codeforces.');
+      if (totalSolved < 100) newSuggestions.push('Aim for at least 100 solved problems to improve your foundation.');
+      if (platformStats.length < 3) newSuggestions.push('Connect more platforms like GitHub and CodeChef for a better profile.');
+      if (newSuggestions.length === 0) newSuggestions.push('Your progress is excellent! Keep practicing advanced topics.');
+
+      setReadinessScore({
+        overall,
+        dsaPractice: dsaScore,
+        aptitude: 80,
+        codingActivity: activityScore,
+        mockInterview: mockScore,
+        suggestions: newSuggestions
+      });
+    }
+  }, [platformStats]);
 
   useEffect(() => {
     localStorage.setItem('coding_usernames', JSON.stringify(usernames));
@@ -83,7 +158,9 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (config: any) =>
       const stats = await fetchAllPlatformStats({
         leetcode: usernames.leetcode,
         codeforces: usernames.codeforces,
-        codechef: usernames.codechef
+        codechef: usernames.codechef,
+        github: usernames.github,
+        hackerrank: usernames.hackerrank
       });
       setPlatformStats(stats);
       setLastUpdated(new Date().toLocaleTimeString());
@@ -108,19 +185,44 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (config: any) =>
 
   return (
     <div className="space-y-8">
+      {/* Global Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center">
+            <Trophy size={24} />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Solved</p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white">
+              {platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0)}
+            </h3>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center">
+            <Activity size={24} />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Platforms</p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white">{platformStats.length}</h3>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center">
+            <Zap size={24} />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Readiness</p>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white">{readinessScore.overall}%</h3>
+          </div>
+        </div>
+      </div>
+
       {/* Platform Integration & Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <div className="space-y-1">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Code2 className="text-indigo-600 dark:text-indigo-400" /> Coding Platforms
-                </h2>
-                {lastUpdated && (
-                  <p className="text-[10px] text-slate-400 font-medium">Last updated: {lastUpdated}</p>
-                )}
-              </div>
+            <div className="flex items-center justify-end mb-6">
               <button 
                 onClick={refreshStats}
                 disabled={isLoading}
@@ -133,38 +235,36 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (config: any) =>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { name: 'LeetCode', key: 'leetcode' },
-                { name: 'Codeforces', key: 'codeforces' },
-                { name: 'CodeChef', key: 'codechef' },
-                { name: 'HackerRank', key: 'hackerrank' }
+                { name: 'LeetCode', key: 'leetcode', icon: Code2 },
+                { name: 'Codeforces', key: 'codeforces', icon: Activity },
+                { name: 'CodeChef', key: 'codechef', icon: Trophy },
+                { name: 'HackerRank', key: 'hackerrank', icon: Target },
+                { name: 'GitHub', key: 'github', icon: Github }
               ].map((platform) => (
-                <div key={platform.key} className="relative">
+                <div key={platform.key} className="relative group">
                   <input
                     type="text"
+                    readOnly
                     value={usernames[platform.key as keyof typeof usernames]}
-                    onChange={(e) => handleUsernameChange(platform.key, e.target.value)}
+                    onClick={onGoToSettings}
                     placeholder={`${platform.name} Username`}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white dark:placeholder:text-slate-500"
+                    className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-700 transition-all dark:text-white dark:placeholder:text-slate-500"
                   />
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
-                    <User size={18} />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-600 dark:text-indigo-400">
+                    <platform.icon size={18} />
                   </div>
+                  <button 
+                    onClick={onGoToSettings}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Settings size={16} />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {platformStats.length === 0 && !isLoading && (
-              <div className="md:col-span-2 py-12 text-center bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-700">
-                <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Activity size={32} />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Platforms Connected</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Enter your usernames above to sync your real-time coding progress.</p>
-              </div>
-            )}
-            
             {isLoading && platformStats.length === 0 && (
               <div className="md:col-span-2 py-12 text-center">
                 <RefreshCw size={32} className="animate-spin text-indigo-600 mx-auto mb-4" />
@@ -177,7 +277,7 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (config: any) =>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 font-bold">
-                      {stats.platform[0]}
+                      {stats.platform === 'GitHub' ? <Github size={20} /> : stats.platform[0]}
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-900 dark:text-white">{stats.platform}</h3>
@@ -186,25 +286,33 @@ export function CodingDashboard({ onStartTest }: { onStartTest: (config: any) =>
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-lg font-bold text-slate-900 dark:text-white">{stats.totalSolved || stats.rating || 0}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">{stats.totalSolved ? 'Solved' : 'Rating'}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold">{stats.platform === 'GitHub' ? 'Total Repos' : (stats.totalSolved ? 'Solved' : 'Rating')}</span>
                   </div>
                 </div>
                 
-                {stats.difficulty && stats.totalSolved > 0 && (
+                {stats.difficulty && stats.totalSolved > 0 && stats.platform !== 'GitHub' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">Difficulty Distribution</span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-bold">View Details</span>
+                      <span className="text-slate-500 dark:text-slate-400">Progress Breakdown</span>
                     </div>
-                    <div className="flex h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg">
+                        <CheckCircle2 size={12} /> Easy: {stats.difficulty.easy}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg">
+                        <CheckCircle2 size={12} /> Medium: {stats.difficulty.medium}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-lg">
+                        <CheckCircle2 size={12} /> Hard: {stats.difficulty.hard}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg">
+                        <CheckCircle2 size={12} /> Total: {stats.totalSolved}
+                      </div>
+                    </div>
+                    <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 mt-2">
                       <div className="bg-emerald-500" style={{ width: `${(stats.difficulty.easy / stats.totalSolved) * 100}%` }} />
                       <div className="bg-amber-500" style={{ width: `${(stats.difficulty.medium / stats.totalSolved) * 100}%` }} />
                       <div className="bg-red-500" style={{ width: `${(stats.difficulty.hard / stats.totalSolved) * 100}%` }} />
-                    </div>
-                    <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500">
-                      <span>E: {stats.difficulty.easy}</span>
-                      <span>M: {stats.difficulty.medium}</span>
-                      <span>H: {stats.difficulty.hard}</span>
                     </div>
                   </div>
                 )}

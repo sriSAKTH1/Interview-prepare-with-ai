@@ -288,6 +288,7 @@ export function PrepareSection({ careerPath, onStartTest }: {
             { "title": "string", "url": "string" }
           ],
           "aiUtility": "string",
+          "companyDomain": "string (e.g., google.com, amazon.com - only for companies, empty for exams)",
           "mockTestConfig": {
             "mode": "string (must be 'company-round')",
             "company": "string",
@@ -934,6 +935,50 @@ export function PrepareSection({ careerPath, onStartTest }: {
 
             {mode === 'company-exam' && (
               <div className="space-y-8">
+                {/* Company/Exam Header */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-6">
+                    {generatedContent.companyDomain ? (
+                      <div className="w-20 h-20 bg-white rounded-2xl border border-slate-100 dark:border-slate-800 p-3 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                        <img 
+                          src={`https://logo.clearbit.com/${generatedContent.companyDomain}`} 
+                          alt={generatedContent.mockTestConfig.company}
+                          className="max-w-full max-h-full object-contain"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            // Show fallback icon if logo fails
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<div class="text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg></div>';
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-800">
+                        <Building2 size={32} />
+                      </div>
+                    )}
+                    <div>
+                      <h2 className="text-3xl font-black text-slate-900 dark:text-white">
+                        {generatedContent.mockTestConfig.company || generatedContent.mockTestConfig.examName}
+                      </h2>
+                      <p className="text-slate-500 dark:text-slate-400 font-medium">
+                        Preparation Guide & Mock Test Strategy
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-sm font-bold border border-indigo-100 dark:border-indigo-800">
+                      {generatedContent.mockTestConfig.difficulty}
+                    </div>
+                    <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-bold border border-emerald-100 dark:border-emerald-800">
+                      {generatedContent.mockTestConfig.duration}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Pattern & Info */}
                   <div className="lg:col-span-2 space-y-8">

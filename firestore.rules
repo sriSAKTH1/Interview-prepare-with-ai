@@ -64,7 +64,13 @@ service cloud.firestore {
              data.uid is string &&
              data.email is string &&
              (!('displayName' in data) || data.displayName is string) &&
-             (!('careerPath' in data) || data.careerPath is string);
+             (!('careerPath' in data) || data.careerPath is string) &&
+             (!('totalStudyMinutes' in data) || data.totalStudyMinutes is number) &&
+             (!('journeyData' in data) || (
+               data.journeyData is map &&
+               data.journeyData.language is string &&
+               data.journeyData.skillLevel is number
+             ));
     }
 
     function isValidCompletedTopic(data) {

@@ -8,7 +8,16 @@
         "uid": { "type": "string" },
         "email": { "type": "string" },
         "displayName": { "type": "string" },
-        "careerPath": { "type": "string" }
+        "careerPath": { "type": "string" },
+        "totalStudyMinutes": { "type": "number" },
+        "journeyData": {
+          "type": "object",
+          "properties": {
+            "language": { "type": "string" },
+            "skillLevel": { "type": "number" },
+            "completedAt": { "type": "string", "format": "date-time" }
+          }
+        }
       },
       "required": ["uid", "email"]
     },

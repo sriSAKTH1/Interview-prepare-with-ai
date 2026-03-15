@@ -16,6 +16,7 @@ import {
   ArrowDownAZ, 
   Search, 
   Plus,
+  Play,
   ChevronLeft, 
   Menu, 
   Layout, 
@@ -314,22 +315,6 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             {isSidebarOpen && <span className="font-semibold text-sm truncate">Questions Approach</span>}
           </button>
 
-          {isSidebarOpen && (
-            <div className="px-3 py-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Your Progress</span>
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">{completionPercentage}%</span>
-              </div>
-              <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${completionPercentage}%` }}
-                  className="h-full bg-indigo-600 dark:bg-indigo-500" 
-                />
-              </div>
-            </div>
-          )}
-
           {sidebarCategories.map((category, catIdx) => (
             <div key={catIdx} className="space-y-3">
               {isSidebarOpen && (
@@ -411,7 +396,23 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
           ))}
         </div>
 
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
+          {isSidebarOpen && (
+            <div className="px-1">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Your Progress</span>
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">{completionPercentage}%</span>
+              </div>
+              <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${completionPercentage}%` }}
+                  className="h-full bg-indigo-600 dark:bg-indigo-500" 
+                />
+              </div>
+            </div>
+          )}
+
           <div className={`flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 ${isSidebarOpen ? '' : 'justify-center'}`}>
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100 dark:shadow-none">
               <Trophy size={18} />
@@ -472,7 +473,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
               )}
               {topic === 'linear-overview' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="Linear Overview" icon={Info} setMode={setMode} />
+                  <LinearOverviewContent setMode={setMode} />
                 </div>
               )}
               {topic === 'array' && <ArrayVisualizer />}
@@ -542,17 +543,20 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
               transition={{ duration: 0.2 }}
               className="max-w-5xl mx-auto p-8 h-full overflow-y-auto"
             >
-              <button 
-                onClick={() => setMode('overview')}
-                className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-medium mb-6"
-              >
-                <ArrowLeft size={18} />
-                Back to {topic.charAt(0).toUpperCase() + topic.slice(1).replace('-', ' ')}
-              </button>
-              {mode === 'flashcards' && <FlashcardMode />}
-              {mode === 'quiz' && <QuizMode />}
-              {mode === 'spaced' && <SpacedRepetitionMode />}
-            </motion.div>
+              {mode !== 'intro' && (
+                <button 
+                  onClick={() => setMode('overview')}
+                  className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-medium mb-6"
+                >
+                  <ArrowLeft size={18} />
+                  Back to {topic.charAt(0).toUpperCase() + topic.slice(1).replace('-', ' ')}
+                </button>
+              )}
+            {mode === 'flashcards' && <FlashcardMode />}
+            {mode === 'quiz' && <QuizMode />}
+            {mode === 'spaced' && <SpacedRepetitionMode />}
+            {mode === 'intro' && <DSAIntroMode onBack={() => setMode('overview')} />}
+          </motion.div>
           )}
         </AnimatePresence>
 
@@ -567,7 +571,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                     .catch(err => handleFirestoreError(err, OperationType.UPDATE, 'users'));
                 }
                 setShowJourneyModal(false);
-                setMode('flashcards');
+                setMode('intro');
               }}
             />
           )}
@@ -1312,6 +1316,512 @@ function QuestionsApproach() {
         </div>
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-3xl" />
       </div>
+    </motion.div>
+  );
+}
+
+function DSAIntroMode({ onBack }: { onBack: () => void }) {
+  const content = [
+    {
+      title: "Introduction",
+      text: "Data Structures and Algorithms (DSA) are fundamental concepts in computer science that help developers write efficient and optimized programs. DSA focuses on how data is stored, organized, and processed in a computer system.\n\nUnderstanding DSA improves problem-solving ability and helps programmers build faster and more scalable software. Most technology companies evaluate DSA skills during coding interviews because it demonstrates logical thinking and programming efficiency."
+    },
+    {
+      title: "What is Data Structure?",
+      text: "A Data Structure is a way of organizing and storing data so that it can be accessed and modified efficiently.\n\nDifferent types of data structures are used depending on the problem and the operations required."
+    },
+    {
+      title: "Examples of Data Structures",
+      list: [
+        "Arrays",
+        "Linked Lists",
+        "Stacks",
+        "Queues",
+        "Trees",
+        "Graphs",
+        "Hash Tables"
+      ],
+      text: "Each data structure is designed to solve specific problems efficiently."
+    },
+    {
+      title: "What is an Algorithm?",
+      text: "An Algorithm is a step-by-step procedure or set of rules to be followed in calculations or other problem-solving operations.\n\nIn programming, an algorithm is a set of instructions that takes an input, processes it, and provides the desired output."
+    },
+    {
+      title: "Examples of Algorithms",
+      list: [
+        "Sorting Algorithms (Bubble Sort, Merge Sort, Quick Sort)",
+        "Searching Algorithms (Linear Search, Binary Search)",
+        "Graph Algorithms (BFS, DFS)",
+        "Dynamic Programming"
+      ]
+    },
+    {
+      title: "Why Learn DSA?",
+      list: [
+        "Efficiency: Helps in writing code that runs faster and uses less memory.",
+        "Problem Solving: Enhances logical thinking to solve complex real-world problems.",
+        "Interview Preparation: Most top-tier tech companies (Google, Amazon, Microsoft) focus heavily on DSA.",
+        "Scalability: Essential for building applications that handle large amounts of data."
+      ]
+    }
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto py-8 space-y-12">
+      <div className="flex items-center justify-between">
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors font-medium"
+        >
+          <ArrowLeft size={18} />
+          Back to Overview
+        </button>
+        <div className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-widest">
+          Introductory Lesson
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <h1 className="text-4xl font-bold text-slate-900 dark:text-white">Data Structures and Algorithms (DSA)</h1>
+        <p className="text-slate-500 dark:text-slate-400 text-lg">Your foundation for technical excellence starts here.</p>
+      </div>
+
+      {/* Video Section */}
+      <div className="aspect-video w-full bg-slate-900 rounded-[2.5rem] overflow-hidden relative group shadow-2xl">
+        <img 
+          src="https://picsum.photos/seed/coding/1200/675" 
+          alt="DSA Introduction Video" 
+          className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-700"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-8 text-center">
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center shadow-2xl shadow-indigo-500/50 mb-6"
+          >
+            <Play size={32} fill="currentColor" className="ml-1" />
+          </motion.button>
+          <h3 className="text-2xl font-bold mb-2">Watch: DSA Fundamentals</h3>
+          <p className="text-slate-300 max-w-md">A comprehensive overview of why DSA matters in modern software engineering.</p>
+        </div>
+        <div className="absolute bottom-6 right-6 px-3 py-1 bg-black/50 backdrop-blur-md rounded-lg text-[10px] font-bold text-white/80">
+          12:45
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div className="lg:col-span-2 space-y-10">
+          {content.map((section, idx) => (
+            <motion.section 
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="space-y-4"
+            >
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                <span className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm">
+                  {idx + 1}
+                </span>
+                {section.title}
+              </h2>
+              <div className="prose prose-slate dark:prose-invert max-w-none">
+                {section.text && (
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
+                    {section.text}
+                  </p>
+                )}
+                {section.list && (
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                    {section.list.map((item, i) => (
+                      <li key={i} className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div className="mt-1 w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                          <Check size={10} className="text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </motion.section>
+          ))}
+        </div>
+
+        <div className="space-y-8">
+          <div className="bg-indigo-600 rounded-[2rem] p-8 text-white shadow-xl shadow-indigo-200 dark:shadow-none">
+            <h3 className="text-xl font-bold mb-4">Ready to Start?</h3>
+            <p className="text-indigo-100 text-sm leading-relaxed mb-6">
+              Now that you understand the basics, let's dive into your first data structure: Arrays.
+            </p>
+            <button 
+              onClick={onBack}
+              className="w-full py-4 bg-white text-indigo-600 rounded-2xl font-bold hover:bg-indigo-50 transition-all"
+            >
+              Go to Curriculum
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 className="font-bold text-slate-900 dark:text-white mb-6">Key Takeaways</h3>
+            <div className="space-y-4">
+              {[
+                "DSA = Efficiency",
+                "Data Structure = Storage",
+                "Algorithm = Procedure",
+                "Crucial for Interviews"
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                  <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LinearOverviewContent({ setMode }: { setMode: (m: LearnMode) => void }) {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  return (
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-12 pb-20"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold uppercase tracking-widest">
+          <Equal size={14} /> Linear Data Structures
+        </div>
+        <h1 className="text-4xl font-bold text-slate-900 dark:text-white">Introduction</h1>
+        <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed">
+          Linear Data Structures are a type of data structure in which elements are arranged sequentially, meaning each element is connected to its previous and next element in a single line.
+        </p>
+        <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed">
+          In linear data structures, data is stored and accessed in a specific order. Each element has a unique position, and operations like insertion, deletion, and traversal follow a linear path.
+        </p>
+        <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed">
+          These structures are widely used in programming because they are simple to understand and efficient for many common operations.
+        </p>
+      </motion.div>
+
+      {/* Characteristics */}
+      <motion.section variants={itemVariants} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+          <CheckCircle2 className="text-emerald-500" /> Characteristics
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[
+            "Elements are arranged in a sequential order.",
+            "Each element has a single predecessor and a single successor (except the first and last).",
+            "Data is traversed in a single direction or sequentially.",
+            "Easy to implement and manage."
+          ].map((text, i) => (
+            <div key={i} className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5">
+                <Check size={14} />
+              </div>
+              <span className="text-slate-700 dark:text-slate-300 font-medium">{text}</span>
+            </div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* Types */}
+      <motion.section variants={itemVariants} className="space-y-8">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Types of Linear Data Structures</h2>
+        
+        <div className="grid grid-cols-1 gap-6">
+          {/* Array */}
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-indigo-200 transition-colors">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <Grid3X3 size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Array</h3>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <p className="text-slate-600 dark:text-slate-400">An Array is a collection of elements stored in contiguous memory locations. Each element can be accessed using an index value.</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Fast access using index', 'Fixed size', 'Efficient for similar types'].map(f => (
+                    <span key={f} className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-bold">{f}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center">
+                <div className="flex gap-2">
+                  {[10, 20, 30, 40, 50].map((n, i) => (
+                    <div key={i} className="w-12 h-12 bg-indigo-600 rounded-lg flex flex-col items-center justify-center text-white font-bold shadow-lg">
+                      {n}
+                      <span className="text-[8px] opacity-50">{i}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Linked List */}
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-emerald-200 transition-colors">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Link size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Linked List</h3>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <p className="text-slate-600 dark:text-slate-400">A Linked List is a collection of nodes where each node contains data and a reference to the next node. They do not store elements in contiguous memory.</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Dynamic size', 'Efficient insertion/deletion', 'Connected via pointers'].map(f => (
+                    <span key={f} className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold">{f}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center">
+                <div className="flex items-center gap-2">
+                  {[10, 20, 30, 40].map((n, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
+                        {n}
+                      </div>
+                      <ArrowRight size={16} className="text-emerald-400" />
+                    </div>
+                  ))}
+                  <div className="text-emerald-400 font-mono font-bold">NULL</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stack */}
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-amber-200 transition-colors">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                <Layers size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Stack (LIFO)</h3>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <p className="text-slate-600 dark:text-slate-400">A Stack follows the Last In, First Out principle. The last element inserted is the first one to be removed.</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Push', 'Pop', 'Peek', 'Undo Operations'].map(f => (
+                    <span key={f} className="px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full text-xs font-bold">{f}</span>
+                  ))}
+                </div>
+                <div className="pt-4 flex gap-2">
+                  <button 
+                    onClick={() => {
+                      const stack = document.getElementById('stack-container');
+                      if (stack) {
+                        const el = document.createElement('div');
+                        el.className = 'w-24 h-10 bg-amber-500 rounded flex items-center justify-center text-white font-bold shadow-lg mb-2 animate-bounce';
+                        el.innerText = Math.floor(Math.random() * 100).toString();
+                        stack.prepend(el);
+                      }
+                    }}
+                    className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 transition-colors"
+                  >
+                    Push Element
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const stack = document.getElementById('stack-container');
+                      if (stack && stack.firstChild) {
+                        (stack.firstChild as HTMLElement).classList.add('translate-x-full', 'opacity-0');
+                        setTimeout(() => stack.removeChild(stack.firstChild!), 300);
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Pop Element
+                  </button>
+                </div>
+              </div>
+              <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center min-h-[200px]">
+                <div id="stack-container" className="flex flex-col gap-2 border-x-2 border-b-2 border-amber-500/30 p-4 rounded-b-xl w-32 items-center">
+                  {[30, 20, 10].map((n, i) => (
+                    <div 
+                      key={i}
+                      className="w-24 h-10 bg-amber-600 rounded flex items-center justify-center text-white font-bold shadow-lg transition-all duration-300"
+                    >
+                      {n}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Queue */}
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-rose-200 transition-colors">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                <Users size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Queue (FIFO)</h3>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <p className="text-slate-600 dark:text-slate-400">A Queue follows the First In, First Out principle. The first element inserted is the first one to be removed.</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Enqueue', 'Dequeue', 'Task Scheduling', 'Print Queues'].map(f => (
+                    <span key={f} className="px-3 py-1 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-full text-xs font-bold">{f}</span>
+                  ))}
+                </div>
+                <div className="pt-4 flex gap-2">
+                  <button 
+                    onClick={() => {
+                      const queue = document.getElementById('queue-container');
+                      if (queue) {
+                        const el = document.createElement('div');
+                        el.className = 'w-12 h-12 bg-rose-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shrink-0 animate-pulse';
+                        el.innerText = Math.floor(Math.random() * 100).toString();
+                        queue.appendChild(el);
+                      }
+                    }}
+                    className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors"
+                  >
+                    Enqueue
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const queue = document.getElementById('queue-container');
+                      if (queue && queue.firstChild) {
+                        (queue.firstChild as HTMLElement).classList.add('-translate-x-full', 'opacity-0');
+                        setTimeout(() => queue.removeChild(queue.firstChild!), 300);
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Dequeue
+                  </button>
+                </div>
+              </div>
+              <div className="bg-slate-900 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[200px]">
+                <div className="flex gap-2 items-center w-full overflow-hidden px-4">
+                  <span className="text-[10px] text-rose-400 font-bold uppercase shrink-0">Front</span>
+                  <div id="queue-container" className="flex gap-2 items-center flex-1">
+                    {[10, 20, 30].map((n, i) => (
+                      <div 
+                        key={i}
+                        className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg transition-all duration-300 shrink-0"
+                      >
+                        {n}
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-rose-400 font-bold uppercase shrink-0">Rear</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Advantages & Limitations */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <motion.section variants={itemVariants} className="bg-emerald-50 dark:bg-emerald-900/10 p-8 rounded-[2.5rem] border border-emerald-100 dark:border-emerald-900/30">
+          <h3 className="text-xl font-bold text-emerald-900 dark:text-emerald-400 mb-6 flex items-center gap-2">
+            <Plus size={20} /> Advantages
+          </h3>
+          <ul className="space-y-4">
+            {[
+              "Simple and easy to implement",
+              "Efficient for sequential data processing",
+              "Easy traversal of elements",
+              "Widely used in many applications"
+            ].map((text, i) => (
+              <li key={i} className="flex items-center gap-3 text-emerald-800 dark:text-emerald-300 text-sm font-medium">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                {text}
+              </li>
+            ))}
+          </ul>
+        </motion.section>
+
+        <motion.section variants={itemVariants} className="bg-rose-50 dark:bg-rose-900/10 p-8 rounded-[2.5rem] border border-rose-100 dark:border-rose-900/30">
+          <h3 className="text-xl font-bold text-rose-900 dark:text-rose-400 mb-6 flex items-center gap-2">
+            <X size={20} /> Limitations
+          </h3>
+          <ul className="space-y-4">
+            {[
+              "Traversal is sequential",
+              "Some operations may take more time",
+              "Not ideal for complex relationships"
+            ].map((text, i) => (
+              <li key={i} className="flex items-center gap-3 text-rose-800 dark:text-rose-300 text-sm font-medium">
+                <div className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
+                {text}
+              </li>
+            ))}
+          </ul>
+        </motion.section>
+      </div>
+
+      {/* Real-World Applications */}
+      <motion.section variants={itemVariants} className="bg-slate-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden">
+        <div className="relative z-10">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <Globe size={24} className="text-indigo-400" /> Real-World Applications
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {[
+              { icon: Volume2, text: "Music Playlists" },
+              { icon: Clock, text: "Browser History" },
+              { icon: ShoppingCart, text: "Print Queues" },
+              { icon: Repeat, text: "Undo/Redo" },
+              { icon: Activity, text: "Task Scheduling" }
+            ].map((item, i) => (
+              <div key={i} className="flex flex-col items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
+                <item.icon size={24} className="text-indigo-400" />
+                <span className="text-xs font-bold text-center">{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl" />
+      </motion.section>
+
+      {/* Conclusion */}
+      <motion.div variants={itemVariants} className="text-center max-w-2xl mx-auto space-y-6">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Conclusion</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed">
+          Linear data structures form the foundation of many programming concepts. Understanding arrays, linked lists, stacks, and queues helps developers design efficient programs and solve problems effectively.
+        </p>
+        <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed">
+          Mastering these structures is an important step toward learning advanced data structures and algorithms.
+        </p>
+        <div className="pt-8">
+          <button 
+            onClick={() => setMode('flashcards')}
+            className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
+          >
+            Practice Linear Structures
+          </button>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }

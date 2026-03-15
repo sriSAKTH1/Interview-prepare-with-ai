@@ -4,12 +4,14 @@
  */
 
 import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
-import { Home, BookOpen, Bell, Search, User, ClipboardCheck, Zap, Moon, Sun, Settings, LogIn, LogOut } from 'lucide-react';
+import { Home, BookOpen, Bell, Search, User, ClipboardCheck, Zap, Moon, Sun, Settings as SettingsIcon, LogIn, LogOut, Code2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dashboard } from './components/Dashboard';
 import { LearnSection } from './components/LearnSection';
 import { PrepareSection } from './components/PrepareSection';
 import { TestSection } from './components/TestSection';
+import { Settings } from './components/Settings';
+import Login from './components/Login';
 import { Section, LearnTopic, LearnMode, TestResult, CompletedTopic } from './types';
 import { 
   auth, 
@@ -124,9 +126,55 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    if (userData?.careerPath) {
+      setCareerPath(userData.careerPath);
+    }
+  }, [userData]);
+
   useEffect(() => {
     localStorage.setItem('careerPath', careerPath);
-  }, [careerPath]);
+    if (user) {
+      const userRef = doc(db, 'users', user.uid);
+      setDoc(userRef, { careerPath }, { merge: true })
+        .catch(err => console.error('Failed to sync career path:', err));
+    }
+  }, [careerPath, user]);
+
+  const [studyTime, setStudyTime] = useState<number>(0);
+
+  // Study Session Timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStudyTime(prev => prev + 1);
+    }, 60000); // Increment every minute
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Sync Study Time to Firestore
+  useEffect(() => {
+    if (!user || studyTime === 0) return;
+
+    const syncStudyTime = async () => {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        // We'll store it as minutes and convert to hours in the UI
+        await setDoc(userRef, { 
+          totalStudyMinutes: studyTime 
+        }, { merge: true });
+      } catch (err) {
+        console.error('Failed to sync study time:', err);
+      }
+    };
+
+    // Sync every 5 minutes to avoid too many writes
+    if (studyTime % 5 === 0) {
+      syncStudyTime();
+    }
+  }, [studyTime, user]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -146,6 +194,22 @@ export default function App() {
     });
     return () => unsubscribe();
   }, [careerPath]);
+
+  useEffect(() => {
+    if (!user) {
+      setUserData(null);
+      return;
+    }
+
+    const userRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userRef, (doc) => {
+      if (doc.exists()) {
+        setUserData(doc.data());
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   // Sync Test Results
   useEffect(() => {
@@ -269,6 +333,24 @@ export default function App() {
     }
   };
 
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <motion.div 
+          animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="w-16 h-16 bg-indigo-600 rounded-3xl shadow-xl shadow-indigo-500/20 flex items-center justify-center"
+        >
+          <Code2 className="text-white" size={32} />
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
   return (
     <ErrorBoundary>
       <div className={`min-h-screen bg-[#f8f9fa] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300`}>
@@ -312,15 +394,19 @@ export default function App() {
                 <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
               </button>
               
-              <div className="relative">
-                <button 
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-300 dark:border-slate-700 hover:border-indigo-500 transition-all"
-                >
-                  <User size={20} className="text-slate-500 dark:text-slate-400" />
-                </button>
+              <div className="flex items-center gap-3">
+                <span className="hidden lg:block text-sm font-bold text-slate-600 dark:text-slate-400 mr-1">
+                  Hi, {user.displayName?.split(' ')[0] || 'User'}
+                </span>
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-300 dark:border-slate-700 hover:border-indigo-500 transition-all"
+                  >
+                    <User size={20} className="text-slate-500 dark:text-slate-400" />
+                  </button>
 
-                <AnimatePresence>
+                  <AnimatePresence>
                   {showProfileMenu && (
                     <>
                       <div 
@@ -374,8 +460,14 @@ export default function App() {
                             </div>
                           </button>
                           
-                          <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                            <Settings size={18} className="text-slate-400" />
+                          <button 
+                            onClick={() => {
+                              setActiveSection('settings');
+                              setShowProfileMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            <SettingsIcon size={18} className="text-slate-400" />
                             <span className="text-sm font-medium dark:text-slate-200">Account Settings</span>
                           </button>
                         </div>
@@ -403,7 +495,8 @@ export default function App() {
             </div>
           </div>
         </div>
-      </nav>
+      </div>
+    </nav>
 
       {/* Main Content */}
       <main className={`pt-16 min-h-screen ${activeSection === 'learn' || activeSection === 'prepare' || activeSection === 'test' ? '' : 'max-w-7xl mx-auto px-4 pt-24'}`}>
@@ -423,10 +516,12 @@ export default function App() {
                 careerPath={careerPath}
                 setCareerPath={setCareerPath}
                 user={user}
+                userData={userData}
                 onViewResult={(result) => {
                   setViewingResult(result);
                   setActiveSection('test');
                 }}
+                onGoToSettings={() => setActiveSection('settings')}
               />
             </motion.div>
           )}
@@ -482,6 +577,26 @@ export default function App() {
                 initialExamName={testConfig?.examName}
                 initialContext={testConfig?.context}
                 viewResult={viewingResult}
+              />
+            </motion.div>
+          )}
+
+          {activeSection === 'settings' && (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Settings 
+                user={user}
+                userData={userData}
+                careerPath={careerPath}
+                setCareerPath={setCareerPath}
+                isDarkMode={isDarkMode}
+                setIsDarkMode={setIsDarkMode}
+                onClose={() => setActiveSection('home')}
               />
             </motion.div>
           )}

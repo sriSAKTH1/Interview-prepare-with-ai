@@ -1,7 +1,9 @@
-import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen, Edit2, X, Trophy } from 'lucide-react';
 import { TestResult, CompletedTopic } from '../types';
 import { CodingDashboard } from './CodingDashboard';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { fetchAllPlatformStats, PlatformStats } from '../services/platformService';
 
 export function Dashboard({ 
   history, 
@@ -10,7 +12,9 @@ export function Dashboard({
   setCareerPath,
   completedTopics = [],
   user,
-  onViewResult
+  userData,
+  onViewResult,
+  onGoToSettings
 }: { 
   history: TestResult[], 
   onStartTest: (config: any) => void,
@@ -18,8 +22,52 @@ export function Dashboard({
   setCareerPath: (path: string) => void,
   completedTopics?: CompletedTopic[],
   user?: any,
-  onViewResult?: (result: TestResult) => void
+  userData?: any,
+  onViewResult?: (result: TestResult) => void,
+  onGoToSettings?: () => void
 }) {
+  const [isChangingPath, setIsChangingPath] = useState(false);
+  const [platformStats, setPlatformStats] = useState<PlatformStats[]>([]);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
+  const studyHours = userData?.totalStudyMinutes 
+    ? (userData.totalStudyMinutes / 60).toFixed(1) + 'h'
+    : '0.0h';
+  
+  const usernames = (() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('coding_usernames');
+      return saved ? JSON.parse(saved) : {
+        leetcode: '',
+        codeforces: '',
+        codechef: '',
+        hackerrank: '',
+        github: ''
+      };
+    }
+    return { leetcode: '', codeforces: '', codechef: '', hackerrank: '', github: '' };
+  })();
+
+  useEffect(() => {
+    const hasUsernames = Object.values(usernames).some(v => v !== '');
+    if (hasUsernames) {
+      const fetchStats = async () => {
+        setIsLoadingStats(true);
+        try {
+          const stats = await fetchAllPlatformStats(usernames);
+          setPlatformStats(stats);
+        } catch (error) {
+          console.error('Failed to fetch stats in Dashboard:', error);
+        } finally {
+          setIsLoadingStats(false);
+        }
+      };
+      fetchStats();
+    }
+  }, []);
+
+  const totalSolved = platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0);
+
   const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'AI Engineer'];
 
   const avgScore = history.length > 0 
@@ -28,13 +76,31 @@ export function Dashboard({
 
   const displayName = user?.displayName || 'Sudharsan';
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome back, {displayName}! 👋</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Your current career path is set to <span className="text-indigo-600 dark:text-indigo-400 font-bold">{careerPath}</span>.</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+            {getGreeting()}, {displayName}! 👋
+          </h1>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-slate-500 dark:text-slate-400">Your current career path is set to <span className="text-indigo-600 dark:text-indigo-400 font-bold">{careerPath}</span>.</p>
+            <button 
+              onClick={() => setIsChangingPath(!isChangingPath)}
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors"
+              title="Change Career Path"
+            >
+              <Edit2 size={14} />
+            </button>
+          </div>
         </div>
         <div className="flex gap-3">
           <button className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -47,36 +113,64 @@ export function Dashboard({
       </div>
 
       {/* Career Path Selector */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
-            <Target size={20} />
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tailor Your Experience</h2>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          {roles.map((role) => (
-            <button
-              key={role}
-              onClick={() => setCareerPath(role)}
-              className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
-                careerPath === role
-                  ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700'
-              }`}
-            >
-              {role}
-            </button>
-          ))}
-        </div>
-      </div>
+      <AnimatePresence>
+        {isChangingPath && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm mb-8 relative">
+              <button 
+                onClick={() => setIsChangingPath(false)}
+                className="absolute top-6 right-6 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                  <Target size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Tailor Your Experience</h2>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {roles.map((role) => (
+                  <button
+                    key={role}
+                    onClick={() => {
+                      setCareerPath(role);
+                      setIsChangingPath(false);
+                    }}
+                    className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
+                      careerPath === role
+                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                        : 'border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard 
+          title="Total Solved" 
+          value={isLoadingStats ? "..." : totalSolved.toString()} 
+          change={platformStats.length > 0 ? `Across ${platformStats.length} platforms` : "Connect platforms"} 
+          icon={Trophy} 
+          color="text-amber-600" 
+          bgColor="bg-amber-50" 
+        />
         <StatCard 
           title="Study Hours" 
-          value="24.5h" 
-          change="+12%" 
+          value={studyHours} 
+          change="Real-time" 
           icon={Clock} 
           color="text-blue-600" 
           bgColor="bg-blue-50" 
@@ -102,13 +196,18 @@ export function Dashboard({
           value={completedTopics.length.toString()} 
           change="New" 
           icon={BookOpen} 
-          color="text-amber-600" 
-          bgColor="bg-amber-50" 
+          color="text-violet-600" 
+          bgColor="bg-violet-50" 
         />
       </div>
 
       {/* Coding Progress & Analytics */}
-      <CodingDashboard onStartTest={onStartTest} />
+      <CodingDashboard 
+        onStartTest={onStartTest} 
+        initialStats={platformStats}
+        initialUsernames={usernames}
+        onGoToSettings={onGoToSettings}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Activity */}
