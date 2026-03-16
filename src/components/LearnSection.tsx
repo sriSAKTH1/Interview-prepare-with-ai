@@ -23,6 +23,7 @@ import {
   ChevronDown, 
   ChevronRight, 
   Book, 
+  BookOpen,
   Zap, 
   CheckCircle2, 
   Rocket, 
@@ -63,6 +64,8 @@ import { StackVisualizer } from './StackVisualizer';
 import { QueueVisualizer } from './QueueVisualizer';
 import { LinkedListVisualizer } from './LinkedListVisualizer';
 import { SortingVisualizer } from './SortingVisualizer';
+import { TreeVisualizer } from './TreeVisualizer';
+import { GraphVisualizer } from './GraphVisualizer';
 
 export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMarkComplete, completedTopics, user }: { 
   topic: LearnTopic, 
@@ -100,7 +103,15 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
     );
   };
 
-  const sidebarCategories = [
+  const sidebarCategories: {
+    title: string;
+    items: {
+      id: string;
+      label: string;
+      icon: any;
+      subItems?: { id: string; label: string; icon: any }[];
+    }[];
+  }[] = [
     {
       title: "DATA STRUCTURES",
       items: [
@@ -159,6 +170,20 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             { id: 'dfs', label: 'DFS (Depth First)', icon: GitBranch },
           ]
         },
+      ]
+    },
+    {
+      title: "APPROACH",
+      items: [
+        { id: 'questions-approach', label: 'Problem Solving', icon: Target },
+        { id: 'complexity-analysis', label: 'Complexity Analysis', icon: Clock },
+        { id: 'pattern-recognition', label: 'Pattern Recognition', icon: Brain },
+      ]
+    },
+    {
+      title: "DATABASES",
+      items: [
+        { id: 'sql-optimization', label: 'SQL Optimization', icon: Database },
       ]
     }
   ];
@@ -247,8 +272,8 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
     );
   }
 
-  const totalTopics = sidebarCategories.reduce((acc, cat) => {
-    return acc + cat.items.reduce((itemAcc, item) => {
+  const totalTopics = sidebarCategories.reduce((acc: number, cat) => {
+    return acc + cat.items.reduce((itemAcc: number, item) => {
       return itemAcc + (item.subItems ? item.subItems.length : 1);
     }, 0);
   }, 0);
@@ -262,7 +287,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: isSidebarOpen ? 300 : 80 }}
+        animate={{ width: isSidebarOpen ? 260 : 80 }}
         className="bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col relative z-40 shadow-sm"
       >
         <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 h-16 bg-white dark:bg-slate-900">
@@ -283,14 +308,13 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
           </button>
         </div>
 
-        <div className="flex-1 py-6 px-3 space-y-8 overflow-y-auto custom-scrollbar">
-          {/* Overview Item */}
+        <div className="flex-1 py-4 px-2.5 space-y-6 overflow-y-auto custom-scrollbar">
           <button
             onClick={() => {
               setTopic('overview');
               setMode('overview');
             }}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+            className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all ${
               topic === 'overview' 
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
                 : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
@@ -300,25 +324,10 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             {isSidebarOpen && <span className="font-semibold text-sm truncate">Overview</span>}
           </button>
 
-          <button
-            onClick={() => {
-              setTopic('questions-approach');
-              setMode('overview');
-            }}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-              topic === 'questions-approach' 
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
-                : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
-          >
-            <HelpCircle size={18} className="shrink-0" />
-            {isSidebarOpen && <span className="font-semibold text-sm truncate">Questions Approach</span>}
-          </button>
-
           {sidebarCategories.map((category, catIdx) => (
-            <div key={catIdx} className="space-y-3">
+            <div key={catIdx} className="space-y-2">
               {isSidebarOpen && (
-                <div className="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <div className="px-3 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
                   <span className="w-1 h-1 bg-indigo-500 rounded-full"></span>
                   {category.title}
                 </div>
@@ -335,13 +344,13 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                           setMode('overview');
                         }
                       }}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${
+                      className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all group ${
                         !item.subItems && topic === item.id 
                           ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
                           : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                       }`}
                     >
-                      <item.icon size={18} className="shrink-0" />
+                      <item.icon size={16} className="shrink-0" />
                       {isSidebarOpen && <span className="font-semibold text-sm truncate flex-1 text-left">{item.label}</span>}
                       {isSidebarOpen && (
                         item.subItems ? (
@@ -396,14 +405,14 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
           ))}
         </div>
 
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
           {isSidebarOpen && (
             <div className="px-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Your Progress</span>
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">{completionPercentage}%</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Your Progress</span>
+                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-full">{completionPercentage}%</span>
               </div>
-              <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${completionPercentage}%` }}
@@ -413,14 +422,14 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             </div>
           )}
 
-          <div className={`flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 ${isSidebarOpen ? '' : 'justify-center'}`}>
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100 dark:shadow-none">
-              <Trophy size={18} />
+          <div className={`flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 ${isSidebarOpen ? '' : 'justify-center'}`}>
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100 dark:shadow-none shrink-0">
+              <Trophy size={14} />
             </div>
             {isSidebarOpen && (
               <div className="flex-1 overflow-hidden">
-                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Current Rank</div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">DSA Apprentice</div>
+                <div className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider leading-none">Current Rank</div>
+                <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate">DSA Apprentice</div>
               </div>
             )}
           </div>
@@ -447,6 +456,16 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
               {topic === 'questions-approach' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
                   <QuestionsApproach />
+                </div>
+              )}
+              {topic === 'complexity-analysis' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Complexity Analysis" icon={Clock} setMode={setMode} />
+                </div>
+              )}
+              {topic === 'pattern-recognition' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <TopicContent title="Pattern Recognition" icon={Brain} setMode={setMode} />
                 </div>
               )}
               {topic !== 'overview' && (
@@ -490,15 +509,11 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                   <TopicContent title="Non-Linear Overview" icon={Info} setMode={setMode} />
                 </div>
               )}
-              {topic === 'tree' && (
-                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="Trees" icon={Network} setMode={setMode} />
-                </div>
+              {(topic === 'tree' || topic === 'tree-theory' || topic === 'tree-animation') && (
+                <TreeVisualizer initialViewMode={topic === 'tree-theory' ? 'theory' : 'animation'} />
               )}
-              {topic === 'graph' && (
-                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="Graphs" icon={GitBranch} setMode={setMode} />
-                </div>
+              {(topic === 'graph' || topic === 'graph-theory' || topic === 'graph-animation') && (
+                <GraphVisualizer initialViewMode={topic === 'graph-theory' ? 'theory' : 'animation'} />
               )}
               {topic === 'sorting' && <SortingVisualizer initialAlgorithm="sorting" />}
               {topic === 'bubble-sort' && <SortingVisualizer initialAlgorithm="bubble-sort" />}
@@ -533,6 +548,11 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                   <TopicContent title="DFS (Depth First)" icon={GitBranch} setMode={setMode} />
                 </div>
               )}
+              {topic === 'sql-optimization' && (
+                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
+                  <SQLOptimizationContent setMode={setMode} />
+                </div>
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -553,7 +573,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                 </button>
               )}
             {mode === 'flashcards' && <FlashcardMode />}
-            {mode === 'quiz' && <QuizMode />}
+            {mode === 'quiz' && <QuizMode topic={topic} />}
             {mode === 'spaced' && <SpacedRepetitionMode />}
             {mode === 'intro' && <DSAIntroMode onBack={() => setMode('overview')} />}
           </motion.div>
@@ -1033,12 +1053,12 @@ function FlashcardMode() {
   );
 }
 
-function QuizMode() {
+function QuizMode({ topic }: { topic: LearnTopic }) {
   const [step, setStep] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
-  const questions = [
+  const dsaQuestions = [
     {
       q: "Which data structure uses LIFO (Last In First Out)?",
       options: ["Queue", "Stack", "Linked List", "Binary Tree"],
@@ -1050,6 +1070,26 @@ function QuizMode() {
       correct: 0
     }
   ];
+
+  const sqlQuestions = [
+    {
+      q: "Which of the following is most effective for speeding up SELECT queries on a large table?",
+      options: ["Adding more RAM", "Creating an Index", "Normalizing the database", "Using SELECT *"],
+      correct: 1
+    },
+    {
+      q: "What does an Execution Plan show?",
+      options: ["The visual design of the database", "The steps the database takes to execute a query", "The list of all users in the database", "The backup schedule"],
+      correct: 1
+    },
+    {
+      q: "Which JOIN type is generally the most performance-heavy on large datasets without indexes?",
+      options: ["INNER JOIN", "LEFT JOIN", "CROSS JOIN", "RIGHT JOIN"],
+      correct: 2
+    }
+  ];
+
+  const questions = topic === 'sql-optimization' ? sqlQuestions : dsaQuestions;
 
   const handleCheck = () => {
     if (selected === null) return;
@@ -1067,18 +1107,18 @@ function QuizMode() {
       <div className="mb-8">
         <div className="flex justify-between items-end mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Quiz: Data Structures</h2>
-            <p className="text-slate-500">Question {step + 1} of {questions.length}</p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Quiz: {topic === 'sql-optimization' ? 'SQL Optimization' : 'Data Structures'}</h2>
+            <p className="text-slate-500 dark:text-slate-400">Question {step + 1} of {questions.length}</p>
           </div>
-          <div className="text-indigo-600 font-bold">Score: 0/0</div>
+          <div className="text-indigo-600 dark:text-indigo-400 font-bold">Score: 0/0</div>
         </div>
-        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div className="h-full bg-indigo-600 transition-all" style={{ width: `${((step + 1) / questions.length) * 100}%` }} />
+        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-full bg-indigo-600 dark:bg-indigo-500 transition-all" style={{ width: `${((step + 1) / questions.length) * 100}%` }} />
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-        <h3 className="text-xl font-bold text-slate-900">{questions[step].q}</h3>
+      <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white">{questions[step].q}</h3>
         
         <div className="space-y-3">
           {questions[step].options.map((opt, idx) => (
@@ -1089,11 +1129,11 @@ function QuizMode() {
               className={`w-full p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between ${
                 selected === idx 
                   ? isCorrect === null 
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
+                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' 
                     : isCorrect 
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                      : 'border-red-500 bg-red-50 text-red-700'
-                  : 'border-slate-100 hover:border-slate-200 text-slate-600'
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                      : 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                  : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
               }`}
             >
               <span className="font-medium">{opt}</span>
@@ -1116,11 +1156,75 @@ function QuizMode() {
           ) : (
             <button 
               onClick={handleNext}
-              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all"
+              className="w-full py-4 bg-slate-900 dark:bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-800 dark:hover:bg-slate-700 transition-all"
             >
               Next Question
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SQLOptimizationContent({ setMode }: { setMode: (m: LearnMode) => void }) {
+  return (
+    <div className="max-w-4xl mx-auto space-y-12">
+      <div className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 rounded-full text-xs font-bold uppercase tracking-widest">
+          <Database size={14} /> Database Performance
+        </div>
+        <h1 className="text-4xl font-bold text-slate-900 dark:text-white">SQL Query Optimization</h1>
+        <p className="text-slate-500 dark:text-slate-400 text-lg">
+          Master the art of writing high-performance database queries. Learn about indexing, execution plans, and optimization techniques.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">What you'll learn</h3>
+          <ul className="space-y-3">
+            {[
+              "Understanding Query Execution Plans",
+              "Effective use of Indexes (B-Tree, Hash)",
+              "Optimizing JOIN operations",
+              "Avoiding SELECT * and N+1 queries",
+              "Database Normalization vs Denormalization"
+            ].map((item, i) => (
+              <li key={i} className="flex gap-3 text-sm text-slate-600 dark:text-slate-400">
+                <CheckCircle2 size={18} className="text-cyan-500 shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="bg-cyan-600 rounded-[2rem] p-8 text-white flex flex-col justify-between">
+          <div>
+            <h3 className="text-xl font-bold mb-2">Ready to test your skills?</h3>
+            <p className="text-cyan-100 text-sm">Take the SQL Optimization quiz to assess your knowledge and learn best practices.</p>
+          </div>
+          <button 
+            onClick={() => setMode('quiz')}
+            className="mt-6 w-full py-4 bg-white text-cyan-600 rounded-2xl font-bold hover:bg-cyan-50 transition-all flex items-center justify-center gap-2"
+          >
+            Start Quiz <ArrowRight size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Core Concepts</h2>
+        <div className="grid grid-cols-1 gap-4">
+          {[
+            { title: "Indexing", desc: "Indexes are special lookup tables that the database search engine can use to speed up data retrieval. Simply put, an index is a pointer to data in a table." },
+            { title: "Execution Plans", desc: "A query plan (or query execution plan) is an ordered set of steps used to access data in a SQL relational database management system." },
+            { title: "Query Refactoring", desc: "Rewriting queries to be more efficient, such as replacing subqueries with JOINs or using EXISTS instead of IN where appropriate." }
+          ].map((concept, i) => (
+            <div key={i} className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <h4 className="font-bold text-slate-900 dark:text-white mb-2">{concept.title}</h4>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{concept.desc}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -66,6 +66,36 @@ export function Dashboard({
     }
   }, []);
 
+  const [aptitudeScore, setAptitudeScore] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('aptitude_mastery_score');
+      const lastUpdate = localStorage.getItem('aptitude_last_decay_date');
+      let score = saved ? parseFloat(saved) : 68; // Start near 70
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (lastUpdate) {
+        const lastDate = new Date(lastUpdate);
+        lastDate.setHours(0, 0, 0, 0);
+        const diffTime = today.getTime() - lastDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 0) {
+          // Reduce 1.5 points per day of inactivity
+          score = Math.max(0, score - (diffDays * 1.5));
+          localStorage.setItem('aptitude_mastery_score', score.toString());
+          localStorage.setItem('aptitude_last_decay_date', today.toISOString());
+        }
+      } else {
+        localStorage.setItem('aptitude_last_decay_date', today.toISOString());
+        localStorage.setItem('aptitude_mastery_score', score.toString());
+      }
+      return Math.min(score, 70);
+    }
+    return 68;
+  });
+
   const totalSolved = platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0);
 
   const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'AI Engineer'];
@@ -207,6 +237,7 @@ export function Dashboard({
         initialStats={platformStats}
         initialUsernames={usernames}
         onGoToSettings={onGoToSettings}
+        aptitudeScore={aptitudeScore}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -280,6 +311,7 @@ export function Dashboard({
               title="SQL Query Optimization" 
               description="Learn to write efficient database queries."
               tag="Quiz"
+              onClick={() => onStartTest({ mode: 'sql-optimization' })}
             />
           </div>
         </div>
@@ -330,9 +362,12 @@ function ActivityItem({ title, time, score, status, onClick }: any) {
   );
 }
 
-function RecommendationCard({ title, description, tag }: any) {
+function RecommendationCard({ title, description, tag, onClick }: any) {
   return (
-    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500 transition-all cursor-pointer group">
+    <div 
+      onClick={onClick}
+      className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500 transition-all cursor-pointer group"
+    >
       <div className="flex justify-between items-start mb-2">
         <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md">
           {tag}

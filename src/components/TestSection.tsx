@@ -56,7 +56,7 @@ interface Question {
   explanation: string;
   distractorAnalysis: string[];
   category?: 'Aptitude' | 'Technical';
-  type?: 'mcq' | 'fill';
+  type?: 'mcq' | 'fill' | 'code-fill';
 }
 
 const APTITUDE_CATEGORIES = {
@@ -241,17 +241,19 @@ export function TestSection({
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       
       if (activeMode === 'input-output') {
-        const prompt = `Generate 10 high-quality "Predict the Output" questions for ${ioLanguage === 'Zoho question' ? 'Zoho interview pattern' : ioLanguage}.
+        const prompt = `Generate 10 high-quality "Input/Output & Code Completion" questions for ${ioLanguage === 'Zoho question' ? 'Zoho interview pattern' : ioLanguage}.
         Difficulty: ${difficulty}
         
         Rules:
         1. Mix of question types: 
-           - "mcq": Multiple choice questions with 4 options.
+           - "mcq": Multiple choice questions with 4 options (Predict the output).
            - "fill": Fill in the blank questions where user must type the exact output.
+           - "code-fill": Code completion questions. Provide a code snippet with one or more lines replaced by "[BLANK]". The user must provide the exact code that should go in the blank.
         2. For "mcq", correctAnswer is the index (0-3) as a string.
-        3. For "fill", correctAnswer is the exact string output. options should be an empty array.
-        4. Each question must include a code snippet in markdown.
-        5. For "Zoho question", focus on C/C++ dry run, pattern printing, and logical series.
+        3. For "fill", correctAnswer is the exact string output.
+        4. For "code-fill", correctAnswer is the exact line(s) of code that fill the [BLANK].
+        5. Each question must include a code snippet in markdown.
+        6. For "Zoho question", focus on C/C++ dry run, pattern printing, and logical series.
         
         Return the response as a JSON object with the following schema:
         {
@@ -267,8 +269,8 @@ export function TestSection({
           "questions": [
             {
               "id": "string",
-              "type": "mcq" | "fill",
-              "question": "string (include the code snippet in markdown code blocks)",
+              "type": "mcq" | "fill" | "code-fill",
+              "question": "string (include the code snippet in markdown code blocks. For code-fill, use [BLANK] inside the code block)",
               "options": ["string"],
               "correctAnswer": "string",
               "explanation": "string",
@@ -305,7 +307,7 @@ export function TestSection({
                     type: Type.OBJECT,
                     properties: {
                       id: { type: Type.STRING },
-                      type: { type: Type.STRING, enum: ["mcq", "fill"] },
+                      type: { type: Type.STRING, enum: ["mcq", "fill", "code-fill"] },
                       question: { type: Type.STRING },
                       options: { type: Type.ARRAY, items: { type: Type.STRING } },
                       correctAnswer: { type: Type.STRING },
@@ -591,6 +593,7 @@ export function TestSection({
       if (activeMode === 'mcq-dsa') context = `Data Structures and Algorithms topic: ${selectedTopic === 'Random' ? 'Mixed DSA topics' : selectedTopic}`;
       else if (activeMode === 'mcq-role') context = `Role: ${selectedRole === 'Custom' ? customRole : selectedRole}`;
       else if (activeMode === 'company-round') context = `Company: ${activeCompany}, Role: ${activeRole}, Level: ${experienceLevel}${activeExamName ? `, Exam/Interview: ${activeExamName}` : ''}${jobDescription ? `, Job Description: ${jobDescription}` : ''}${activePrepContext ? `. Additional Context: ${activePrepContext}` : ''}`;
+      else if (activeMode === 'sql-optimization') context = "SQL Query Optimization, Database Performance Tuning, Indexing, and Efficient Query Writing";
       else context = "General technical interview questions";
 
       const finalQuestionCount = customQuestionCount ? Math.min(parseInt(customQuestionCount) || 10, 50) : questionCount;
@@ -966,9 +969,15 @@ export function TestSection({
     userAnswers.forEach((ans, idx) => {
       const q = questions[idx];
       if (!q || ans === undefined || ans === null || ans === '') return;
-      const userAnswer = ans.toString().trim().toLowerCase();
-      const correctAnswer = q.correctAnswer.toString().trim().toLowerCase();
-      if (userAnswer === correctAnswer) count++;
+      
+      const userAnswer = ans.toString().trim();
+      const correctAnswer = q.correctAnswer.toString().trim();
+      
+      if (q.type === 'code-fill') {
+        if (userAnswer === correctAnswer) count++;
+      } else {
+        if (userAnswer.toLowerCase() === correctAnswer.toLowerCase()) count++;
+      }
     });
     return count;
   };
@@ -1000,6 +1009,18 @@ export function TestSection({
 
     const score = `${correctCount}/${questions.length}`;
     const percentage = (correctCount / questions.length) * 100;
+
+    if (mode === 'aptitude') {
+      const currentAptitude = localStorage.getItem('aptitude_mastery_score');
+      let newAptitude = currentAptitude ? parseFloat(currentAptitude) : 68;
+      if (percentage >= 70) {
+        newAptitude = Math.min(70, newAptitude + 5);
+      } else if (percentage >= 40) {
+        newAptitude = Math.min(70, newAptitude + 2);
+      }
+      localStorage.setItem('aptitude_mastery_score', newAptitude.toString());
+      localStorage.setItem('aptitude_last_decay_date', new Date().toISOString());
+    }
 
     onComplete({
       id: Math.random().toString(36).substr(2, 9),
@@ -1068,11 +1089,19 @@ export function TestSection({
     },
     { 
       id: 'input-output', 
-      title: 'Input/Output Test', 
-      description: 'Predict the output of code snippets in various languages like C, C++, Java, and Python.',
+      title: 'Input/Output & Code Completion', 
+      description: 'Predict the output of code snippets or complete missing lines of code in various languages like C, C++, Java, and Python.',
       icon: Terminal,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50'
+    },
+    { 
+      id: 'sql-optimization', 
+      title: 'SQL Query Optimization', 
+      description: 'Learn to write efficient database queries, understand indexing, and master performance tuning.',
+      icon: Database,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-50'
     }
   ];
 
@@ -1923,19 +1952,33 @@ export function TestSection({
                   </ReactMarkdown>
                 </div>
                 
-                {questions[currentQuestionIndex].type === 'fill' ? (
+                {questions[currentQuestionIndex].type === 'fill' || questions[currentQuestionIndex].type === 'code-fill' ? (
                   <div className="space-y-4">
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                      Type your output here:
+                      {questions[currentQuestionIndex].type === 'fill' ? 'Type your output here:' : 'Complete the missing code line(s):'}
                     </label>
-                    <input
-                      type="text"
-                      value={userAnswers[currentQuestionIndex] || ''}
-                      onChange={(e) => handleAnswerSelect(e.target.value)}
-                      placeholder="Enter the exact output..."
-                      className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-indigo-600 outline-none transition-all font-mono"
-                    />
-                    <p className="text-xs text-slate-500">Note: Output must be exact (case-insensitive, including spaces if any).</p>
+                    {questions[currentQuestionIndex].type === 'fill' ? (
+                      <input
+                        type="text"
+                        value={userAnswers[currentQuestionIndex] || ''}
+                        onChange={(e) => handleAnswerSelect(e.target.value)}
+                        placeholder="Enter the exact output..."
+                        className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:border-indigo-600 outline-none transition-all font-mono"
+                      />
+                    ) : (
+                      <textarea
+                        value={userAnswers[currentQuestionIndex] || ''}
+                        onChange={(e) => handleAnswerSelect(e.target.value)}
+                        placeholder="Type the missing code here..."
+                        rows={4}
+                        className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-900 text-indigo-300 focus:border-indigo-600 outline-none transition-all font-mono text-sm leading-relaxed"
+                      />
+                    )}
+                    <p className="text-xs text-slate-500">
+                      {questions[currentQuestionIndex].type === 'fill' 
+                        ? 'Note: Output must be exact (case-insensitive, including spaces if any).'
+                        : 'Note: Provide the exact code to replace [BLANK]. Maintain proper indentation.'}
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">

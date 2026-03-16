@@ -107,24 +107,43 @@ export default function App() {
     }
     return 'Frontend Developer';
   });
-  const [isDarkMode, setIsDarkMode] = useState(() => {
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' || 
-        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      return (localStorage.getItem('themeMode') as 'light' | 'dark' | 'system') || 'system';
     }
-    return false;
+    return 'system';
   });
+
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    const updateTheme = () => {
+      let isDark = false;
+      if (themeMode === 'system') {
+        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      } else {
+        isDark = themeMode === 'dark';
+      }
+      
+      setIsDarkMode(isDark);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      localStorage.setItem('themeMode', themeMode);
+    };
+
+    updateTheme();
+
+    if (themeMode === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => updateTheme();
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
     }
-  }, [isDarkMode]);
+  }, [themeMode]);
 
   const [userData, setUserData] = useState<any>(null);
 
@@ -386,9 +405,6 @@ export default function App() {
             <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2 hidden md:block"></div>
             
             <div className="flex items-center gap-3">
-              <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                <Search size={20} />
-              </button>
               <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors relative">
                 <Bell size={20} />
                 <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
@@ -448,7 +464,7 @@ export default function App() {
                           )}
 
                           <button 
-                            onClick={() => setIsDarkMode(!isDarkMode)}
+                            onClick={() => setThemeMode(isDarkMode ? 'light' : 'dark')}
                             className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                           >
                             <div className="flex items-center gap-3">
@@ -594,8 +610,8 @@ export default function App() {
                 userData={userData}
                 careerPath={careerPath}
                 setCareerPath={setCareerPath}
-                isDarkMode={isDarkMode}
-                setIsDarkMode={setIsDarkMode}
+                themeMode={themeMode}
+                setThemeMode={setThemeMode}
                 onClose={() => setActiveSection('home')}
               />
             </motion.div>

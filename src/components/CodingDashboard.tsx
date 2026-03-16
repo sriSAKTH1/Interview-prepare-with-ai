@@ -36,12 +36,14 @@ export function CodingDashboard({
     hackerrank: '',
     github: ''
   },
-  onGoToSettings
+  onGoToSettings,
+  aptitudeScore = 70
 }: { 
   onStartTest: (config: any) => void,
   initialStats?: PlatformStats[],
   initialUsernames?: any,
-  onGoToSettings?: () => void
+  onGoToSettings?: () => void,
+  aptitudeScore?: number
 }) {
   const [usernames, setUsernames] = useState(() => {
     const saved = localStorage.getItem('coding_usernames');
@@ -75,7 +77,7 @@ export function CodingDashboard({
   const [readinessScore, setReadinessScore] = useState<InterviewReadinessScore>({
     overall: 0,
     dsaPractice: 0,
-    aptitude: 80,
+    aptitude: Math.min(aptitudeScore, 70),
     codingActivity: 0,
     mockInterview: 0,
     suggestions: [
@@ -86,7 +88,8 @@ export function CodingDashboard({
 
   useEffect(() => {
     if (platformStats.length > 0) {
-      const totalSolved = platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0);
+      const leetcodeStats = platformStats.find(s => s.platform === 'LeetCode');
+      const totalSolved = leetcodeStats ? leetcodeStats.totalSolved : platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0);
       
       // Update DSA progress based on total solved
       // We'll distribute the total solved across topics proportionally to their difficulty/importance
@@ -122,7 +125,7 @@ export function CodingDashboard({
       const activityScore = Math.min(100, platformStats.length * 20 + (totalSolved > 100 ? 20 : 0));
       const mockScore = 65 + Math.floor(Math.random() * 10); // Simulated for now
       
-      const overall = Math.round((dsaScore + 80 + activityScore + mockScore) / 4);
+      const overall = Math.round((dsaScore + Math.min(aptitudeScore, 70) + activityScore + mockScore) / 4);
       
       const newSuggestions = [];
       if (dsaScore < 50) newSuggestions.push('Focus on solving more problems on LeetCode and Codeforces.');
@@ -133,7 +136,7 @@ export function CodingDashboard({
       setReadinessScore({
         overall,
         dsaPractice: dsaScore,
-        aptitude: 80,
+        aptitude: Math.min(aptitudeScore, 70),
         codingActivity: activityScore,
         mockInterview: mockScore,
         suggestions: newSuggestions
@@ -372,8 +375,8 @@ export function CodingDashboard({
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-black text-slate-900 dark:text-white">{readinessScore.overall}</span>
-                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Score</span>
+                <span className="text-3xl font-black text-slate-900 dark:text-white">{readinessScore.overall}</span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Score</span>
               </div>
             </div>
 
@@ -403,12 +406,39 @@ export function CodingDashboard({
 
       {/* DSA Topic Progress */}
       <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Coding Progress Dashboard</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Track your mastery across key DSA topics</p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              {platformStats.find(s => s.platform === 'LeetCode') && <Code2 className="text-orange-500" size={24} />}
+              {platformStats.find(s => s.platform === 'LeetCode') ? 'LeetCode' : 'Coding'} Progress Dashboard
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+              {platformStats.find(s => s.platform === 'LeetCode') 
+                ? 'Topic mastery estimated from your LeetCode problem-solving activity' 
+                : 'Track your mastery across key DSA topics'}
+            </p>
           </div>
-          <div className="flex items-center gap-4">
+          
+          {platformStats.find(s => s.platform === 'LeetCode') && (
+            <div className="flex items-center gap-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+              <div className="text-center">
+                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Easy</p>
+                <p className="text-lg font-black dark:text-white">{platformStats.find(s => s.platform === 'LeetCode')?.difficulty?.easy}</p>
+              </div>
+              <div className="w-[1px] h-8 bg-slate-200 dark:bg-slate-700" />
+              <div className="text-center">
+                <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">Medium</p>
+                <p className="text-lg font-black dark:text-white">{platformStats.find(s => s.platform === 'LeetCode')?.difficulty?.medium}</p>
+              </div>
+              <div className="w-[1px] h-8 bg-slate-200 dark:bg-slate-700" />
+              <div className="text-center">
+                <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase">Hard</p>
+                <p className="text-lg font-black dark:text-white">{platformStats.find(s => s.platform === 'LeetCode')?.difficulty?.hard}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="hidden xl:flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-indigo-600 rounded-full" />
               <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Solved</span>
@@ -425,7 +455,13 @@ export function CodingDashboard({
             <div key={topic.topic} className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-bold text-slate-700 dark:text-slate-300">{topic.topic}</span>
-                <span className="text-slate-400 dark:text-slate-500 font-mono">{topic.solved}/{topic.total} <span className="text-indigo-600 dark:text-indigo-400 font-bold">({topic.percentage}%)</span></span>
+                <span className="text-slate-400 dark:text-slate-500 font-mono">
+                  {topic.solved}/{topic.total} 
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold ml-1">({topic.percentage}%)</span>
+                  {platformStats.find(s => s.platform === 'LeetCode') && (
+                    <span className="ml-2 text-[8px] px-1 bg-slate-100 dark:bg-slate-800 rounded text-slate-400 uppercase">Est.</span>
+                  )}
+                </span>
               </div>
               <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
                 <motion.div

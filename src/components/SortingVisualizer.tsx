@@ -21,6 +21,7 @@ import {
 
 export function SortingVisualizer({ initialAlgorithm = 'bubble-sort' }: { initialAlgorithm?: string }) {
   const [array, setArray] = useState<number[]>([50, 20, 40, 10, 30]);
+  const [customInput, setCustomInput] = useState<string>('');
   const [isVisualizing, setIsVisualizing] = useState(false);
   const [speed, setSpeed] = useState(600);
   const [showPseudocode, setShowPseudocode] = useState(false);
@@ -41,6 +42,30 @@ export function SortingVisualizer({ initialAlgorithm = 'bubble-sort' }: { initia
     setComparingIndices([]);
     setSortedIndices([]);
     setMessage('Array reset to initial state.');
+  };
+
+  const handleRandomize = () => {
+    const newArray = Array.from({ length: 6 }, () => Math.floor(Math.random() * 90) + 10);
+    setArray(newArray);
+    setComparingIndices([]);
+    setSortedIndices([]);
+    setMessage('Generated new random array.');
+  };
+
+  const handleCustomInput = () => {
+    const numbers = customInput.split(',')
+      .map(n => parseInt(n.trim()))
+      .filter(n => !isNaN(n) && n > 0 && n <= 100);
+    
+    if (numbers.length > 0) {
+      setArray(numbers.slice(0, 10)); // Limit to 10 for visualization
+      setComparingIndices([]);
+      setSortedIndices([]);
+      setCustomInput('');
+      setMessage('Custom array applied.');
+    } else {
+      setMessage('Invalid input. Please enter comma-separated numbers (1-100).');
+    }
   };
 
   const bubbleSort = async () => {
@@ -225,13 +250,51 @@ export function SortingVisualizer({ initialAlgorithm = 'bubble-sort' }: { initia
               >
                 Start {selectedAlgorithm.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
               </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={handleRandomize}
+                  disabled={isVisualizing}
+                  className="py-3 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <RefreshCw size={16} /> Random
+                </button>
+                <button 
+                  onClick={handleReset}
+                  disabled={isVisualizing}
+                  className="py-3 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <RotateCcw size={16} /> Reset
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-widest opacity-50">
+              <Plus size={14} />
+              Custom Data
+            </div>
+            <div className="space-y-3">
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="e.g. 10, 50, 30, 90"
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  disabled={isVisualizing}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all disabled:opacity-50"
+                />
+              </div>
               <button 
-                onClick={handleReset}
-                disabled={isVisualizing}
-                className="w-full py-3 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                onClick={handleCustomInput}
+                disabled={isVisualizing || !customInput.trim()}
+                className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
               >
-                <RotateCcw size={16} /> Reset
+                Apply Custom Values
               </button>
+              <p className="text-[10px] text-slate-400 leading-relaxed px-1">
+                Enter comma-separated numbers between 1 and 100.
+              </p>
             </div>
           </section>
 

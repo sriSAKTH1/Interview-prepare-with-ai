@@ -1,7 +1,7 @@
 export type Section = 'home' | 'learn' | 'prepare' | 'test' | 'settings';
-export type LearnTopic = 'overview' | 'questions-approach' | 'linear-overview' | 'array' | 'string' | 'stack' | 'queue' | 'linked-list' | 'non-linear-overview' | 'tree' | 'graph' | 'sorting' | 'bubble-sort' | 'selection-sort' | 'insertion-sort' | 'merge-sort' | 'quick-sort' | 'heap-sort' | 'bucket-sort' | 'searching-graphs' | 'linear-search' | 'binary-search' | 'bfs' | 'dfs';
+export type LearnTopic = 'overview' | 'questions-approach' | 'complexity-analysis' | 'pattern-recognition' | 'linear-overview' | 'array' | 'string' | 'stack' | 'queue' | 'linked-list' | 'non-linear-overview' | 'tree' | 'tree-theory' | 'tree-animation' | 'graph' | 'graph-theory' | 'graph-animation' | 'sorting' | 'bubble-sort' | 'selection-sort' | 'insertion-sort' | 'merge-sort' | 'quick-sort' | 'heap-sort' | 'bucket-sort' | 'searching-graphs' | 'linear-search' | 'binary-search' | 'bfs' | 'dfs' | 'sql-optimization';
 export type LearnMode = 'overview' | 'flashcards' | 'quiz' | 'spaced' | 'intro';
-export type TestMode = 'overview' | 'mcq-dsa' | 'mcq-role' | 'company-round' | 'aptitude' | 'comprehensive-company-test' | 'input-output';
+export type TestMode = 'overview' | 'mcq-dsa' | 'mcq-role' | 'company-round' | 'aptitude' | 'comprehensive-company-test' | 'input-output' | 'sql-optimization';
 
 export interface CodingPlatformStats {
   platform: string;

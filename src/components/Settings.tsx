@@ -33,13 +33,13 @@ type SettingsTab =
   | 'security' 
   | 'privacy';
 
-export function Settings({ user, userData, careerPath, setCareerPath, isDarkMode, setIsDarkMode, onClose }: {
+export function Settings({ user, userData, careerPath, setCareerPath, themeMode, setThemeMode, onClose }: {
   user: any;
   userData: any;
   careerPath: string;
   setCareerPath: (path: string) => void;
-  isDarkMode: boolean;
-  setIsDarkMode: (dark: boolean) => void;
+  themeMode: 'light' | 'dark' | 'system';
+  setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
   onClose?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
@@ -435,24 +435,56 @@ export function Settings({ user, userData, careerPath, setCareerPath, isDarkMode
                   <div className="space-y-8">
                     <div className="space-y-4">
                       <h4 className="font-bold text-slate-900 dark:text-white">Appearance</h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <button 
-                          onClick={() => setIsDarkMode(false)}
+                          onClick={() => setThemeMode('light')}
                           className={`p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all ${
-                            !isDarkMode ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-800'
+                            themeMode === 'light' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-800'
                           }`}
                         >
-                          <Sun size={24} className={!isDarkMode ? 'text-indigo-600' : 'text-slate-400'} />
-                          <span className={`font-bold ${!isDarkMode ? 'text-indigo-600' : 'text-slate-500'}`}>Light Mode</span>
+                          <Sun size={24} className={themeMode === 'light' ? 'text-indigo-600' : 'text-slate-400'} />
+                          <span className={`font-bold ${themeMode === 'light' ? 'text-indigo-600' : 'text-slate-500'}`}>Light</span>
                         </button>
                         <button 
-                          onClick={() => setIsDarkMode(true)}
+                          onClick={() => setThemeMode('dark')}
                           className={`p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all ${
-                            isDarkMode ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-800'
+                            themeMode === 'dark' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-800'
                           }`}
                         >
-                          <Moon size={24} className={isDarkMode ? 'text-indigo-600' : 'text-slate-400'} />
-                          <span className={`font-bold ${isDarkMode ? 'text-indigo-600' : 'text-slate-500'}`}>Dark Mode</span>
+                          <Moon size={24} className={themeMode === 'dark' ? 'text-indigo-600' : 'text-slate-400'} />
+                          <span className={`font-bold ${themeMode === 'dark' ? 'text-indigo-600' : 'text-slate-500'}`}>Dark</span>
+                        </button>
+                        <button 
+                          onClick={() => setThemeMode('system')}
+                          className={`p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all ${
+                            themeMode === 'system' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-800'
+                          }`}
+                        >
+                          <Smartphone size={24} className={themeMode === 'system' ? 'text-indigo-600' : 'text-slate-400'} />
+                          <span className={`font-bold ${themeMode === 'system' ? 'text-indigo-600' : 'text-slate-500'}`}>System</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl">
+                        <div>
+                          <h4 className="font-bold text-slate-900 dark:text-white">Quick Toggle</h4>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Instantly switch between light and dark.</p>
+                        </div>
+                        <button 
+                          onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none ${
+                            themeMode === 'dark' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
+                          }`}
+                        >
+                          <div
+                            className={`flex h-6 w-6 transform items-center justify-center rounded-full bg-white transition-transform ${
+                              themeMode === 'dark' ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          >
+                            {themeMode === 'dark' ? <Moon size={12} className="text-indigo-600" /> : <Sun size={12} className="text-amber-500" />}
+                          </div>
                         </button>
                       </div>
                     </div>
