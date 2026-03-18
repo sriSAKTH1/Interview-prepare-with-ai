@@ -16,9 +16,11 @@ export interface PlatformStats {
 
 export async function fetchLeetCodeStats(username: string): Promise<PlatformStats | null> {
   try {
+    console.log(`Fetching LeetCode stats for ${username}...`);
     // Using a CORS proxy to avoid "Failed to fetch" errors in the browser
     const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://leetcode-stats-api.herokuapp.com/${username}`)}`);
     const data = await response.json();
+    console.log('LeetCode response:', data);
     if (data.status === 'success') {
       return {
         platform: 'LeetCode',
@@ -43,13 +45,16 @@ export async function fetchLeetCodeStats(username: string): Promise<PlatformStat
 
 export async function fetchCodeforcesStats(username: string): Promise<PlatformStats | null> {
   try {
+    console.log(`Fetching Codeforces stats for ${username}...`);
     // Fetch user info for rating/rank
     const infoResponse = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://codeforces.com/api/user.info?handles=${username}`)}`);
     const infoData = await infoResponse.json();
+    console.log('Codeforces info response:', infoData);
     
     // Fetch user status for solved count
     const statusResponse = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://codeforces.com/api/user.status?handle=${username}`)}`);
     const statusData = await statusResponse.json();
+    console.log('Codeforces status response:', statusData);
 
     if (infoData.status === 'OK' && statusData.status === 'OK') {
       const user = infoData.result[0];
@@ -82,14 +87,16 @@ export async function fetchCodeforcesStats(username: string): Promise<PlatformSt
 
 export async function fetchCodeChefStats(username: string): Promise<PlatformStats | null> {
   try {
+    console.log(`Fetching CodeChef stats for ${username}...`);
     // Using a common unofficial API for CodeChef with CORS proxy
     const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://codechef-api.vercel.app/${username}`)}`);
     const data = await response.json();
+    console.log('CodeChef response:', data);
     if (data.success) {
       return {
         platform: 'CodeChef',
         username,
-        totalSolved: 0, // Some APIs don't provide this easily
+        totalSolved: data.problemsSolved || 0,
         difficulty: { easy: 0, medium: 0, hard: 0 },
         rating: parseInt(data.currentRating) || 0,
         rank: data.stars || '',
@@ -104,8 +111,10 @@ export async function fetchCodeChefStats(username: string): Promise<PlatformStat
 
 export async function fetchGitHubStats(username: string): Promise<PlatformStats | null> {
   try {
+    console.log(`Fetching GitHub stats for ${username}...`);
     const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://api.github.com/users/${username}`)}`);
     const data = await response.json();
+    console.log('GitHub response:', data);
     if (data.login) {
       return {
         platform: 'GitHub',

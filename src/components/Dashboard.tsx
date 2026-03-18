@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen, Edit2, X, Trophy } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen, Edit2, X, Trophy, Globe, Github, Activity } from 'lucide-react';
 import { TestResult, CompletedTopic } from '../types';
 import { CodingDashboard } from './CodingDashboard';
 import { InterviewReadiness } from './InterviewReadiness';
@@ -37,7 +37,7 @@ export function Dashboard({
   
   const [activeTab, setActiveTab] = useState<'overview' | 'readiness' | 'coding'>('overview');
 
-  const usernames = (() => {
+  const usernames = useMemo(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('coding_usernames');
       return saved ? JSON.parse(saved) : {
@@ -49,15 +49,18 @@ export function Dashboard({
       };
     }
     return { leetcode: '', codeforces: '', codechef: '', hackerrank: '', github: '' };
-  })();
+  }, []);
 
   useEffect(() => {
     const hasUsernames = Object.values(usernames).some(v => v !== '');
+    console.log('Dashboard usernames:', usernames, 'hasUsernames:', hasUsernames);
     if (hasUsernames) {
       const fetchStats = async () => {
         setIsLoadingStats(true);
+        console.log('Fetching platform stats...');
         try {
           const stats = await fetchAllPlatformStats(usernames);
+          console.log('Fetched stats:', stats);
           setPlatformStats(stats);
         } catch (error) {
           console.error('Failed to fetch stats in Dashboard:', error);
@@ -67,7 +70,7 @@ export function Dashboard({
       };
       fetchStats();
     }
-  }, []);
+  }, [usernames]);
 
   const [aptitudeScore, setAptitudeScore] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -100,6 +103,19 @@ export function Dashboard({
   });
 
   const totalSolved = platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0);
+  const leetcodeSolved = platformStats.find(s => s.platform === 'LeetCode')?.totalSolved || 0;
+  const platformsCount = platformStats.length;
+
+  // Calculate a simplified readiness score for the overview card
+  const calculateReadiness = () => {
+    const dsaPractice = Math.min(100, (completedTopics.length * 5));
+    const aptitude = Math.min(100, aptitudeScore);
+    const codingActivity = Math.min(100, (totalSolved / 2));
+    const mockInterview = Math.min(100, (history.length * 10));
+    return Math.round((dsaPractice + aptitude + codingActivity + mockInterview) / 4);
+  };
+
+  const readinessScore = calculateReadiness();
 
   const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'AI Engineer'];
 
@@ -234,48 +250,75 @@ export function Dashboard({
             className="space-y-8"
           >
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard 
-                title="Total Solved" 
-                value={isLoadingStats ? "..." : totalSolved.toString()} 
-                change={platformStats.length > 0 ? `Across ${platformStats.length} platforms` : "Connect platforms"} 
+                title="LeetCode Solved" 
+                value={isLoadingStats ? "..." : leetcodeSolved.toString()} 
+                change={leetcodeSolved > 0 ? "Synced" : "Connect LeetCode"} 
+                icon={Code2} 
+                color="text-orange-600" 
+                bgColor="bg-orange-50" 
+                onClick={leetcodeSolved === 0 ? onGoToSettings : undefined}
+              />
+              <StatCard 
+                title="Coding Activity" 
+                value={totalSolved.toString()} 
+                change={`Total Solved`} 
                 icon={Trophy} 
                 color="text-amber-600" 
                 bgColor="bg-amber-50" 
               />
               <StatCard 
-                title="Study Hours" 
-                value={studyHours} 
-                change="Real-time" 
-                icon={Clock} 
-                color="text-blue-600" 
-                bgColor="bg-blue-50" 
-              />
-              <StatCard 
-                title="Tests Completed" 
-                value={history.length.toString()} 
-                change="+2" 
-                icon={ClipboardCheck} 
+                title="Platforms" 
+                value={platformsCount.toString()} 
+                change={platformsCount > 0 ? "Connected" : "Connect Now"} 
+                icon={Globe} 
                 color="text-emerald-600" 
                 bgColor="bg-emerald-50" 
+                onClick={platformsCount === 0 ? onGoToSettings : undefined}
               />
               <StatCard 
-                title="Avg. Score" 
-                value={`${avgScore}%`} 
-                change="+5%" 
-                icon={BarChart3} 
+                title="Readiness" 
+                value={`${readinessScore}%`} 
+                change="AI Score" 
+                icon={Target} 
                 color="text-indigo-600" 
                 bgColor="bg-indigo-50" 
-              />
-              <StatCard 
-                title="Topics Mastered" 
-                value={completedTopics.length.toString()} 
-                change="New" 
-                icon={BookOpen} 
-                color="text-violet-600" 
-                bgColor="bg-violet-50" 
+                onClick={() => setActiveTab('readiness')}
               />
             </div>
+            
+            {/* Platform Marquee */}
+            {platformStats.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 py-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative">
+                <div className="text-center mb-6">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Connected Platforms</h3>
+                </div>
+                <div className="flex overflow-hidden group">
+                  <div className="flex animate-marquee whitespace-nowrap py-2">
+                    {[...platformStats, ...platformStats, ...platformStats].map((platform, idx) => (
+                      <div key={`${platform.platform}-${idx}`} className="flex items-center gap-4 mx-12">
+                        <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+                          {platform.platform === 'LeetCode' && <Code2 size={24} />}
+                          {platform.platform === 'GitHub' && <Github size={24} />}
+                          {platform.platform === 'Codeforces' && <Activity size={24} />}
+                          {platform.platform === 'CodeChef' && <Trophy size={24} />}
+                          {platform.platform === 'HackerRank' && <Target size={24} />}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xl font-bold text-slate-400 dark:text-slate-600 group-hover:text-indigo-500 transition-colors">
+                            {platform.platform}
+                          </span>
+                          <span className="text-[10px] font-medium text-slate-300 dark:text-slate-700 uppercase tracking-wider">
+                            @{platform.username} • {platform.totalSolved} {platform.platform === 'GitHub' ? 'Repos' : 'Solved'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Recent Activity */}
@@ -393,15 +436,18 @@ export function Dashboard({
   );
 }
 
-function StatCard({ title, value, change, icon: Icon, color, bgColor }: any) {
+function StatCard({ title, value, change, icon: Icon, color, bgColor, onClick }: any) {
   return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div 
+      onClick={onClick}
+      className={`bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm ${onClick ? 'cursor-pointer hover:border-indigo-300 transition-all' : ''}`}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className={`p-2 rounded-xl ${bgColor} dark:bg-slate-800 ${color}`}>
           <Icon size={20} />
         </div>
         <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-          change.startsWith('+') ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+          change.startsWith('+') || change === 'Synced' || change === 'Connected' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
         }`}>
           {change}
         </span>

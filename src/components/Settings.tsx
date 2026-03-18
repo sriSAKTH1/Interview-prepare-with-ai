@@ -46,12 +46,17 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
   const [isSaving, setIsSaving] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState<any>(null);
   const [platformUsername, setPlatformUsername] = useState('');
-  const [platforms, setPlatforms] = useState([
-    { name: 'LeetCode', icon: Globe, connected: true, username: 'sudharsan_m', url: 'https://leetcode.com/sudharsan_m' },
-    { name: 'GitHub', icon: Github, connected: true, username: 'sudharsan014', url: 'https://github.com/sudharsan014' },
-    { name: 'Codeforces', icon: Globe, connected: false },
-    { name: 'CodeChef', icon: Globe, connected: false },
-  ]);
+  const [platforms, setPlatforms] = useState(() => {
+    const saved = localStorage.getItem('coding_usernames');
+    const usernames = saved ? JSON.parse(saved) : { leetcode: '', github: '', codeforces: '', codechef: '', hackerrank: '' };
+    return [
+      { name: 'LeetCode', icon: Globe, connected: !!usernames.leetcode, username: usernames.leetcode, url: usernames.leetcode ? `https://leetcode.com/${usernames.leetcode}` : undefined },
+      { name: 'GitHub', icon: Github, connected: !!usernames.github, username: usernames.github, url: usernames.github ? `https://github.com/${usernames.github}` : undefined },
+      { name: 'Codeforces', icon: Globe, connected: !!usernames.codeforces, username: usernames.codeforces, url: usernames.codeforces ? `https://codeforces.com/profile/${usernames.codeforces}` : undefined },
+      { name: 'CodeChef', icon: Globe, connected: !!usernames.codechef, username: usernames.codechef, url: usernames.codechef ? `https://www.codechef.com/users/${usernames.codechef}` : undefined },
+      { name: 'HackerRank', icon: Globe, connected: !!usernames.hackerrank, username: usernames.hackerrank, url: usernames.hackerrank ? `https://www.hackerrank.com/${usernames.hackerrank}` : undefined },
+    ];
+  });
 
   const handleSave = () => {
     setIsSaving(true);
@@ -73,12 +78,33 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
   const saveConnection = () => {
     if (!platformUsername.trim()) return;
     
-    setPlatforms(prev => prev.map(p => 
+    const newPlatforms = platforms.map(p => 
       p.name === connectingPlatform.name 
         ? { ...p, connected: true, username: platformUsername, url: `https://${p.name.toLowerCase()}.com/${platformUsername}` }
         : p
-    ));
+    );
+    setPlatforms(newPlatforms);
+
+    // Sync to localStorage for Dashboard
+    const usernames: any = {};
+    newPlatforms.forEach(p => {
+      usernames[p.name.toLowerCase()] = p.connected ? p.username : '';
+    });
+    localStorage.setItem('coding_usernames', JSON.stringify(usernames));
+
     setConnectingPlatform(null);
+  };
+
+  const disconnectPlatform = (name: string) => {
+    const newPlatforms = platforms.map(p => p.name === name ? { ...p, connected: false, username: '' } : p);
+    setPlatforms(newPlatforms);
+
+    // Sync to localStorage
+    const usernames: any = {};
+    newPlatforms.forEach(p => {
+      usernames[p.name.toLowerCase()] = p.connected ? p.username : '';
+    });
+    localStorage.setItem('coding_usernames', JSON.stringify(usernames));
   };
 
   const [notificationPrefs, setNotificationPrefs] = useState({
@@ -345,7 +371,7 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                           <button 
                             onClick={() => {
                               if (platform.connected) {
-                                setPlatforms(prev => prev.map(p => p.name === platform.name ? { ...p, connected: false, username: undefined } : p));
+                                disconnectPlatform(platform.name);
                               } else {
                                 handleConnect(platform);
                               }
