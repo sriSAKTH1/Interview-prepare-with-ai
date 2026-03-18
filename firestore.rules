@@ -69,7 +69,9 @@ service cloud.firestore {
              (!('journeyData' in data) || (
                data.journeyData is map &&
                data.journeyData.language is string &&
-               data.journeyData.skillLevel is number
+               (!('skillLevel' in data.journeyData) || data.journeyData.skillLevel is number) &&
+               (!('langRating' in data.journeyData) || data.journeyData.langRating is number) &&
+               (!('dsaRating' in data.journeyData) || data.journeyData.dsaRating is number)
              ));
     }
 

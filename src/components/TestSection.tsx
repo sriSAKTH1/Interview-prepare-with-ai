@@ -83,7 +83,7 @@ export function TestSection({
   viewResult?: TestResult | null
 }) {
   const [mode, setMode] = useState<TestMode>(initialMode || 'overview');
-  const [testStep, setTestStep] = useState<'overview' | 'difficulty' | 'role-selection' | 'topic-selection' | 'company-config' | 'generating' | 'pre-test-summary' | 'rules' | 'active' | 'results' | 'coding-active' | 'coding-results' | 'aptitude-config' | 'io-config'>(viewResult ? 'results' : (initialMode ? 'generating' : 'overview'));
+  const [testStep, setTestStep] = useState<'overview' | 'difficulty' | 'role-selection' | 'topic-selection' | 'company-config' | 'generating' | 'evaluating' | 'pre-test-summary' | 'rules' | 'active' | 'results' | 'coding-active' | 'coding-results' | 'aptitude-config' | 'io-config'>(viewResult ? 'results' : (initialMode ? 'generating' : 'overview'));
   const [ioLanguage, setIoLanguage] = useState<string>('C');
   const [aptitudeSubMode, setAptitudeSubMode] = useState<'custom' | 'random' | 'company'>('random');
   const [selectedAptitudeCategories, setSelectedAptitudeCategories] = useState<string[]>([]);
@@ -184,6 +184,7 @@ export function TestSection({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<(number | string)[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [testStartTime, setTestStartTime] = useState<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -429,9 +430,14 @@ export function TestSection({
 
       if (activeMode === 'comprehensive-company-test') {
         const prompt = `Generate a comprehensive mock test for ${activeExamName || activeCompany} for the role of ${activeRole}.
-        ${activePrepContext ? `Context: ${activePrepContext}` : ''}
+        ${activePrepContext ? `STRICTLY FOLLOW THIS FORMAT ANALYSIS: ${activePrepContext}` : ''}
         
-        The test should have three sections:
+        The test should have the EXACT number of questions and sections specified in the format analysis above.
+        - If the analysis specifies 60 questions (e.g., 20 Aptitude, 40 Technical), you MUST generate all 60 questions.
+        - Do NOT truncate or provide a sample. Provide the FULL test.
+        - Include a coding challenge ONLY if the format analysis mentions coding, programming, or a hands-on technical round.
+        
+        Standard sections to include if mentioned:
         1. Aptitude questions (MCQ)
         2. Technical MCQs
         3. A coding challenge (similar to LeetCode)
@@ -570,7 +576,7 @@ export function TestSection({
                   required: ["title", "description", "examples", "constraints", "starterCode", "testCases"]
                 }
               },
-              required: ["insights", "aptitudeQuestions", "technicalQuestions", "codingProblem"]
+              required: ["insights", "aptitudeQuestions", "technicalQuestions"]
             }
           }
         });
@@ -592,7 +598,6 @@ export function TestSection({
       let context = "";
       if (activeMode === 'mcq-dsa') context = `Data Structures and Algorithms topic: ${selectedTopic === 'Random' ? 'Mixed DSA topics' : selectedTopic}`;
       else if (activeMode === 'mcq-role') context = `Role: ${selectedRole === 'Custom' ? customRole : selectedRole}`;
-      else if (activeMode === 'company-round') context = `Company: ${activeCompany}, Role: ${activeRole}, Level: ${experienceLevel}${activeExamName ? `, Exam/Interview: ${activeExamName}` : ''}${jobDescription ? `, Job Description: ${jobDescription}` : ''}${activePrepContext ? `. Additional Context: ${activePrepContext}` : ''}`;
       else if (activeMode === 'sql-optimization') context = "SQL Query Optimization, Database Performance Tuning, Indexing, and Efficient Query Writing";
       else context = "General technical interview questions";
 
@@ -604,9 +609,9 @@ export function TestSection({
       
       IMPORTANT: Use Google Search to find actual previous year questions or very similar patterns for ${activeExamName || activeCompany}.
       
-      ${(activeMode === 'company-round' || activeMode === 'mcq-role') ? 'IMPORTANT: Include a significant number of questions on fundamental concepts, core principles, and foundational knowledge relevant to this specific company and role.' : ''}
+      ${(activeMode === 'mcq-role') ? 'IMPORTANT: Include a significant number of questions on fundamental concepts, core principles, and foundational knowledge relevant to this specific company and role.' : ''}
       
-      Also provide deep insights about the ${activeMode === 'company-round' ? 'company and role' : 'role and topic'}.
+      Also provide deep insights about the role and topic.
       If this is a company-specific round, include a detailed analysis of their interview process and typical patterns.
       
       Return the response as a JSON object with the following schema:
@@ -614,7 +619,7 @@ export function TestSection({
         "insights": {
           "whatIsThis": "string (explain what this specific test covers)",
           "whyUseThis": "string (explain why this test is important for the user's goal)",
-          "companyInfo": "string (brief info about company, only if company-round)",
+          "companyInfo": "string (brief info about company, only if comprehensive-company-test)",
           "roleExpectations": "string (what is expected for this role/topic)",
           "keyTopics": ["string", "string"],
           "preparationTips": ["string", "string"],
@@ -628,7 +633,8 @@ export function TestSection({
             "options": ["string", "string", "string", "string"],
             "correctAnswer": number (0-3),
             "explanation": "string",
-            "distractorAnalysis": ["string", "string", "string", "string"]
+            "distractorAnalysis": ["string", "string", "string", "string"],
+            "category": "string (e.g., 'Aptitude', 'Technical', 'Verbal', 'Reasoning')"
           }
         ]
       }`;
@@ -671,7 +677,8 @@ export function TestSection({
                     },
                     correctAnswer: { type: Type.INTEGER },
                     explanation: { type: Type.STRING },
-                    distractorAnalysis: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    distractorAnalysis: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    category: { type: Type.STRING }
                   },
                   required: ["id", "question", "options", "correctAnswer", "explanation", "distractorAnalysis"]
                 }
@@ -888,18 +895,22 @@ export function TestSection({
       if (evaluation.status === 'Accepted') {
         // Delay slightly for dramatic effect
         setTimeout(() => {
-          onComplete({
-            id: Math.random().toString(36).substr(2, 9),
-            title: `Coding: ${codingProblem?.title}`,
-            score: "100/100",
-            total: 100,
-            correct: 100,
-            time: new Date().toLocaleTimeString(),
-            status: 'Completed',
-            feedback: "Excellent! Your solution passed all test cases.",
-            weaknesses: [],
-            improvements: ["Try optimizing for space complexity"]
-          });
+          if (mode === 'comprehensive-company-test') {
+            finishTest();
+          } else {
+            onComplete({
+              id: Math.random().toString(36).substr(2, 9),
+              title: `Coding: ${codingProblem?.title}`,
+              score: "100/100",
+              total: 100,
+              correct: 100,
+              time: new Date().toLocaleTimeString(),
+              status: 'Completed',
+              feedback: "Excellent! Your solution passed all test cases.",
+              weaknesses: [],
+              improvements: ["Try optimizing for space complexity"]
+            });
+          }
         }, 1500);
       }
     } catch (error) {
@@ -982,7 +993,7 @@ export function TestSection({
     return count;
   };
 
-  const finishTest = () => {
+  const finishTest = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     
     if (codingProblem && testStep !== 'coding-active' && testStep !== 'coding-results') {
@@ -1003,10 +1014,7 @@ export function TestSection({
       return;
     }
 
-    setTestStep('results');
-    
     const correctCount = getCorrectCount();
-
     const score = `${correctCount}/${questions.length}`;
     const percentage = (correctCount / questions.length) * 100;
 
@@ -1022,10 +1030,10 @@ export function TestSection({
       localStorage.setItem('aptitude_last_decay_date', new Date().toISOString());
     }
 
-    onComplete({
+    const resultData: TestResult = {
       id: Math.random().toString(36).substr(2, 9),
-      title: mode === 'company-round' 
-        ? `${companyName} (${companyRole}) - ${difficulty}`
+      title: mode === 'comprehensive-company-test'
+        ? `${companyName}${examName ? ` - ${examName}` : ''} (${companyRole})`
         : mode === 'mcq-role'
         ? `${selectedRole === 'Custom' ? customRole : selectedRole} - ${difficulty}`
         : `${String(mode).replace('-', ' ').toUpperCase()} - ${difficulty}`,
@@ -1039,7 +1047,63 @@ export function TestSection({
       improvements: ["Review the topics you missed", "Try a higher difficulty next time"],
       questions: questions,
       userAnswers: userAnswers
-    });
+    };
+
+    if (mode === 'comprehensive-company-test') {
+      setIsEvaluating(true);
+      setTestStep('evaluating');
+      
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+        const prompt = `Evaluate the following mock interview performance for the role of ${companyRole} at ${companyName}.
+        
+        MCQ Results: ${correctCount}/${questions.length} correct.
+        ${codingProblem && submissionResult ? `Coding Challenge: ${submissionResult.status === 'Accepted' ? 'Passed' : 'Failed'}. Feedback: ${submissionResult.feedback}` : ''}
+        
+        Questions and User Answers:
+        ${questions.map((q, i) => `Q${i+1}: ${q.question}\nUser Answer: ${userAnswers[i]}\nCorrect Answer: ${q.correctAnswer}\n`).join('\n')}
+        
+        Provide a comprehensive evaluation including:
+        1. A numerical score out of 100 (Interview Readiness Score).
+        2. Detailed feedback on strengths and weaknesses.
+        3. Specific improvement suggestions.
+        
+        Return the response as a JSON object:
+        {
+          "score": number,
+          "feedback": "string",
+          "weaknesses": ["string"],
+          "improvements": ["string"]
+        }`;
+
+        const result = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: { responseMimeType: "application/json" }
+        });
+
+        const evaluation = JSON.parse(result.text);
+        
+        const finalResult: TestResult = {
+          ...resultData,
+          interviewScore: evaluation.score,
+          feedback: evaluation.feedback,
+          weaknesses: evaluation.weaknesses,
+          improvements: evaluation.improvements
+        };
+        
+        onComplete(finalResult);
+      } catch (error) {
+        console.error("Evaluation failed:", error);
+        onComplete(resultData);
+      } finally {
+        setIsEvaluating(false);
+        setTestStep('results');
+      }
+    } else {
+      setTestStep('results');
+      onComplete(resultData);
+    }
   };
 
   const handleAnswerSelect = (answer: number | string) => {
@@ -1072,9 +1136,9 @@ export function TestSection({
       bgColor: 'bg-indigo-50'
     },
     { 
-      id: 'company-round', 
+      id: 'comprehensive-company-test', 
       title: 'Company Specific Round', 
-      description: 'Simulate actual placement rounds for top tech companies like Google, Amazon, Microsoft, etc.',
+      description: 'Simulate actual placement rounds (Aptitude + Technical + Coding) for top tech companies like Google, Amazon, Microsoft, etc.',
       icon: Building2,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50'
@@ -1244,7 +1308,7 @@ export function TestSection({
                 onClick={() => {
                   if (mode === 'mcq-role') setTestStep('role-selection');
                   else if (mode === 'mcq-dsa') setTestStep('topic-selection');
-                  else if (mode === 'company-round') setTestStep('company-config');
+                  else if (mode === 'comprehensive-company-test') setTestStep('company-config');
                   else generateQuestions();
                 }}
                 className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 dark:shadow-indigo-900/20 flex items-center gap-2 mx-auto"
@@ -1707,6 +1771,49 @@ export function TestSection({
           </motion.div>
         )}
 
+        {testStep === 'evaluating' && (
+          <motion.div
+            key="evaluating"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md mx-auto text-center space-y-8 py-20"
+          >
+            <div className="relative w-32 h-32 mx-auto">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full"
+              />
+              <motion.div
+                animate={{ rotate: -360 }}
+                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-4 border-4 border-emerald-500 border-b-transparent rounded-full"
+              />
+              <div className="absolute inset-0 flex items-center justify-center text-indigo-600">
+                <Sparkles size={40} className="animate-pulse" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">AI is Evaluating Your Performance</h2>
+              <p className="text-slate-500 dark:text-slate-400">Analyzing your answers and coding logic to provide a detailed readiness score...</p>
+            </div>
+            <div className="flex flex-col gap-3 max-w-xs mx-auto">
+              <div className="flex items-center gap-3 text-sm text-slate-400 dark:text-slate-400">
+                <CheckCircle2 size={16} className="text-emerald-500" />
+                <span>Reviewing MCQ accuracy</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-slate-400 dark:text-slate-400">
+                <CheckCircle2 size={16} className="text-emerald-500" />
+                <span>Analyzing coding challenge results</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-slate-400 dark:text-slate-400">
+                <Loader2 size={16} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+                <span>Generating readiness score & feedback</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {testStep === 'pre-test-summary' && testInsights && (
           <motion.div
             key="pre-test-summary"
@@ -1721,7 +1828,7 @@ export function TestSection({
               <h2 className="text-3xl font-bold text-slate-900 dark:text-white">AI Assessment Insights</h2>
               <p className="text-slate-500 dark:text-slate-400">
                 Here's what we've prepared for your {
-                  mode === 'company-round' ? 'Company Round' : 
+                  mode === 'comprehensive-company-test' ? 'Company Round' : 
                   mode === 'mcq-role' ? `${selectedRole === 'Custom' ? customRole : selectedRole} Assessment` :
                   mode === 'mcq-dsa' ? `${selectedTopic} DSA Assessment` :
                   'Assessment'
@@ -1754,7 +1861,7 @@ export function TestSection({
             )}
 
             <div className="space-y-6">
-              {testInsights.companyInfo && mode === 'company-round' && (
+              {testInsights.companyInfo && mode === 'comprehensive-company-test' && (
                 <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-2">
                   <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
                     <Building2 size={18} className="text-indigo-600 dark:text-indigo-400" />
@@ -1767,7 +1874,7 @@ export function TestSection({
               <div className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-2">
                 <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
                   <Target size={18} className="text-indigo-600 dark:text-indigo-400" />
-                  {mode === 'company-round' ? `${companyRole} Expectations` : 'Role Expectations'}
+                  {mode === 'comprehensive-company-test' ? `${companyRole} Expectations` : 'Role Expectations'}
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{testInsights.roleExpectations}</p>
               </div>
@@ -1928,19 +2035,41 @@ export function TestSection({
             {/* Question Card */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 shadow-sm space-y-8 min-h-[400px] flex flex-col justify-between">
               <div className="space-y-6">
+                {questions[currentQuestionIndex].category && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                      Section
+                    </div>
+                    <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-indigo-100 dark:border-indigo-900/40">
+                      {questions[currentQuestionIndex].category}
+                    </div>
+                  </div>
+                )}
                 <div className="prose dark:prose-invert max-w-none">
                   <ReactMarkdown
                     components={{
                       p: ({ children }) => <div className="mb-4 last:mb-0">{children}</div>,
                       code({ node, inline, className, children, ...props }: any) {
                         const match = /language-(\w+)/.exec(className || '');
-                        return !inline ? (
-                          <div className="bg-slate-900 rounded-2xl p-6 my-4 overflow-x-auto border border-slate-800">
-                            <code className="text-indigo-300 font-mono text-sm leading-relaxed" {...props}>
-                              {children}
-                            </code>
-                          </div>
-                        ) : (
+                        if (!inline) {
+                          const codeString = String(children).replace(/\n$/, '');
+                          const lines = codeString.split('\n');
+                          return (
+                            <div className="bg-slate-900 rounded-2xl p-6 my-4 overflow-x-auto border border-slate-800 relative group">
+                              <div className="flex gap-4">
+                                <div className="flex flex-col text-slate-600 font-mono text-sm text-right select-none border-r border-slate-800 pr-4 min-w-[2.5rem]">
+                                  {lines.map((_, i) => (
+                                    <span key={i}>{i + 1}</span>
+                                  ))}
+                                </div>
+                                <code className="text-indigo-300 font-mono text-sm leading-relaxed whitespace-pre" {...props}>
+                                  {children}
+                                </code>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
                           <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
                             {children}
                           </code>
@@ -2018,16 +2147,30 @@ export function TestSection({
                 {currentQuestionIndex === questions.length - 1 ? (
                   <button
                     onClick={finishTest}
-                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 dark:shadow-indigo-900/20"
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 dark:shadow-indigo-900/20 flex items-center gap-2"
                   >
-                    Finish Assessment
+                    {codingProblem ? (
+                      <>
+                        Next Section: Coding <ArrowRight size={18} />
+                      </>
+                    ) : (
+                      'Finish Assessment'
+                    )}
                   </button>
                 ) : (
                   <button
                     onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
                     className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold transition-colors"
                   >
-                    Next Question <ArrowRight size={18} />
+                    {questions[currentQuestionIndex].category !== questions[currentQuestionIndex + 1].category ? (
+                      <>
+                        Next Section: {questions[currentQuestionIndex + 1].category} <ArrowRight size={18} />
+                      </>
+                    ) : (
+                      <>
+                        Next Question <ArrowRight size={18} />
+                      </>
+                    )}
                   </button>
                 )}
               </div>
@@ -2137,7 +2280,17 @@ export function TestSection({
                       <>
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{codingProblem.title}</h1>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <div className="px-2 py-0.5 bg-indigo-600 text-white rounded text-[8px] font-bold uppercase tracking-wider">
+                                  Section
+                                </div>
+                                <div className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded text-[8px] font-bold uppercase tracking-wider border border-indigo-100 dark:border-indigo-900/40">
+                                  Coding
+                                </div>
+                              </div>
+                              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{codingProblem.title}</h1>
+                            </div>
                             <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                               difficulty === 'Easy' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' :
                               difficulty === 'Medium' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
@@ -2531,13 +2684,25 @@ export function TestSection({
                                   components={{
                                     p: ({ children }) => <div className="mb-2 last:mb-0">{children}</div>,
                                     code({ node, inline, className, children, ...props }: any) {
-                                      return !inline ? (
-                                        <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800">
-                                          <code className="text-indigo-300 font-mono text-xs leading-relaxed" {...props}>
-                                            {children}
-                                          </code>
-                                        </div>
-                                      ) : (
+                                      if (!inline) {
+                                        const codeString = String(children).replace(/\n$/, '');
+                                        const lines = codeString.split('\n');
+                                        return (
+                                          <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800 relative group">
+                                            <div className="flex gap-4">
+                                              <div className="flex flex-col text-slate-600 font-mono text-[10px] text-right select-none border-r border-slate-800 pr-3 min-w-[2rem]">
+                                                {lines.map((_, i) => (
+                                                  <span key={i}>{i + 1}</span>
+                                                ))}
+                                              </div>
+                                              <code className="text-indigo-300 font-mono text-xs leading-relaxed whitespace-pre" {...props}>
+                                                {children}
+                                              </code>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      return (
                                         <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
                                           {children}
                                         </code>
@@ -2596,13 +2761,25 @@ export function TestSection({
                                   components={{
                                     p: ({ children }) => <span className="inline">{children}</span>,
                                     code({ node, inline, className, children, ...props }: any) {
-                                      return !inline ? (
-                                        <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800">
-                                          <code className="text-indigo-300 font-mono text-xs leading-relaxed" {...props}>
-                                            {children}
-                                          </code>
-                                        </div>
-                                      ) : (
+                                      if (!inline) {
+                                        const codeString = String(children).replace(/\n$/, '');
+                                        const lines = codeString.split('\n');
+                                        return (
+                                          <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800 relative group">
+                                            <div className="flex gap-4">
+                                              <div className="flex flex-col text-slate-600 font-mono text-[10px] text-right select-none border-r border-slate-800 pr-3 min-w-[2rem]">
+                                                {lines.map((_, i) => (
+                                                  <span key={i}>{i + 1}</span>
+                                                ))}
+                                              </div>
+                                              <code className="text-indigo-300 font-mono text-xs leading-relaxed whitespace-pre" {...props}>
+                                                {children}
+                                              </code>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                      return (
                                         <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
                                           {children}
                                         </code>
@@ -2625,13 +2802,25 @@ export function TestSection({
                                       components={{
                                         p: ({ children }) => <span className="inline">{children}</span>,
                                         code({ node, inline, className, children, ...props }: any) {
-                                          return !inline ? (
-                                            <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800">
-                                              <code className="text-indigo-300 font-mono text-xs leading-relaxed" {...props}>
-                                                {children}
-                                              </code>
-                                            </div>
-                                          ) : (
+                                          if (!inline) {
+                                            const codeString = String(children).replace(/\n$/, '');
+                                            const lines = codeString.split('\n');
+                                            return (
+                                              <div className="bg-slate-900 rounded-xl p-4 my-2 overflow-x-auto border border-slate-800 relative group">
+                                                <div className="flex gap-4">
+                                                  <div className="flex flex-col text-slate-600 font-mono text-[10px] text-right select-none border-r border-slate-800 pr-3 min-w-[2rem]">
+                                                    {lines.map((_, i) => (
+                                                      <span key={i}>{i + 1}</span>
+                                                    ))}
+                                                  </div>
+                                                  <code className="text-indigo-300 font-mono text-xs leading-relaxed whitespace-pre" {...props}>
+                                                    {children}
+                                                  </code>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+                                          return (
                                             <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-mono text-xs" {...props}>
                                               {children}
                                             </code>

@@ -66,6 +66,8 @@ import { LinkedListVisualizer } from './LinkedListVisualizer';
 import { SortingVisualizer } from './SortingVisualizer';
 import { TreeVisualizer } from './TreeVisualizer';
 import { GraphVisualizer } from './GraphVisualizer';
+import { SearchingVisualizer } from './SearchingVisualizer';
+import { StringVisualizer } from './StringVisualizer';
 
 export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMarkComplete, completedTopics, user }: { 
   topic: LearnTopic, 
@@ -79,7 +81,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
 }) {
   const [learnStep, setLearnStep] = useState<'overview' | 'curriculum'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [expandedCats, setExpandedCats] = useState<string[]>(['DATA STRUCTURES', 'ALGORITHMS', 'Linear', 'Non-Linear']);
+  const [expandedCats, setExpandedCats] = useState<string[]>(['DATA STRUCTURES', 'ALGORITHMS', 'Linear', 'Non-Linear', 'Database Mastery']);
   const [showJourneyModal, setShowJourneyModal] = useState(false);
 
   const isCompleted = completedTopics?.some(t => t.topicId === topic);
@@ -109,6 +111,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
       id: string;
       label: string;
       icon: any;
+      tag?: string;
       subItems?: { id: string; label: string; icon: any }[];
     }[];
   }[] = [
@@ -183,7 +186,15 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
     {
       title: "DATABASES",
       items: [
-        { id: 'sql-optimization', label: 'SQL Optimization', icon: Database },
+        { 
+          id: 'database-mastery', 
+          label: 'Database Mastery', 
+          icon: Database,
+          tag: 'New',
+          subItems: [
+            { id: 'sql-optimization', label: 'SQL Optimization', icon: DatabaseZap },
+          ]
+        },
       ]
     }
   ];
@@ -325,7 +336,15 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
           </button>
 
           {sidebarCategories.map((category, catIdx) => (
-            <div key={catIdx} className="space-y-2">
+            <div 
+              key={catIdx} 
+              id={category.title === 'DATABASES' ? 'databases-category' : undefined}
+              className={`space-y-2 p-1.5 rounded-2xl transition-all ${
+                category.title === 'DATABASES' 
+                  ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 shadow-sm' 
+                  : ''
+              }`}
+            >
               {isSidebarOpen && (
                 <div className="px-3 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
                   <span className="w-1 h-1 bg-indigo-500 rounded-full"></span>
@@ -352,6 +371,11 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                     >
                       <item.icon size={16} className="shrink-0" />
                       {isSidebarOpen && <span className="font-semibold text-sm truncate flex-1 text-left">{item.label}</span>}
+                      {isSidebarOpen && (item as any).tag && (
+                        <span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase tracking-tighter rounded-md">
+                          {(item as any).tag}
+                        </span>
+                      )}
                       {isSidebarOpen && (
                         item.subItems ? (
                           <ChevronDown 
@@ -496,17 +520,13 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                 </div>
               )}
               {topic === 'array' && <ArrayVisualizer />}
-              {topic === 'string' && (
-                <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="Strings" icon={Type} setMode={setMode} />
-                </div>
-              )}
+              {topic === 'string' && <StringVisualizer />}
               {topic === 'stack' && <StackVisualizer />}
               {topic === 'queue' && <QueueVisualizer />}
               {topic === 'linked-list' && <LinkedListVisualizer />}
               {topic === 'non-linear-overview' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="Non-Linear Overview" icon={Info} setMode={setMode} />
+                  <NonLinearOverviewContent setMode={setMode} />
                 </div>
               )}
               {(topic === 'tree' || topic === 'tree-theory' || topic === 'tree-animation') && (
@@ -530,22 +550,22 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
               )}
               {topic === 'linear-search' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="Linear Search" icon={Search} setMode={setMode} />
+                  <SearchingVisualizer initialAlgorithm="linear-search" />
                 </div>
               )}
               {topic === 'binary-search' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="Binary Search" icon={Search} setMode={setMode} />
+                  <SearchingVisualizer initialAlgorithm="binary-search" />
                 </div>
               )}
               {topic === 'bfs' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="BFS (Breadth First)" icon={Network} setMode={setMode} />
+                  <GraphVisualizer initialTraversalType="BFS" />
                 </div>
               )}
               {topic === 'dfs' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <TopicContent title="DFS (Depth First)" icon={GitBranch} setMode={setMode} />
+                  <GraphVisualizer initialTraversalType="DFS" />
                 </div>
               )}
               {topic === 'sql-optimization' && (
@@ -588,7 +608,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                 if (user) {
                   const userRef = doc(db, 'users', user.uid);
                   setDoc(userRef, { journeyData: data }, { merge: true })
-                    .catch(err => handleFirestoreError(err, OperationType.UPDATE, 'users'));
+                    .catch(err => handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`));
                 }
                 setShowJourneyModal(false);
                 setMode('intro');
@@ -1279,76 +1299,229 @@ function QuestionsApproach() {
     {
       icon: Search,
       title: "1. Understand the Problem",
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-      points: [
-        "Read the problem statement carefully twice.",
-        "Identify the inputs and their types (e.g., integer array, string).",
-        "Identify the expected output and its type.",
-        "Clarify constraints (e.g., time limit, memory limit, input size).",
-        "Ask clarifying questions (e.g., Can the input be empty? Are there negative numbers?)."
-      ]
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      content: (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">👉 Ask:</h4>
+            <ul className="list-disc list-inside text-sm text-slate-600 dark:text-slate-400 space-y-1 ml-2">
+              <li>What is the input?</li>
+              <li>What is the output?</li>
+              <li>Any constraints?</li>
+            </ul>
+          </div>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+            <h4 className="font-bold text-slate-900 dark:text-white mb-2 text-xs uppercase tracking-widest opacity-50">👉 Example</h4>
+            <div className="text-sm space-y-1">
+              <p className="text-slate-600 dark:text-slate-400"><span className="font-bold">Input:</span> [2,7,11,15], Target = 9</p>
+              <p className="text-slate-600 dark:text-slate-400"><span className="font-bold">Output:</span> [0,1]</p>
+            </div>
+          </div>
+        </div>
+      )
     },
     {
       icon: Brain,
-      title: "2. Brainstorm & Brute Force",
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-      points: [
-        "Think of the simplest possible solution (Brute Force).",
-        "Don't worry about efficiency yet, just focus on correctness.",
-        "Write down the steps for the brute force approach.",
-        "Calculate the time and space complexity of this approach."
-      ]
+      title: "2. Brute Force Approach",
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      content: (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">👉 Idea:</h4>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Solve the problem in the simplest way first.</p>
+          </div>
+          <div className="bg-slate-900 rounded-xl p-4 overflow-hidden">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Example (Two Sum)</span>
+            </div>
+            <pre className="text-[10px] font-mono text-rose-300 leading-relaxed overflow-x-auto">
+{`def two_sum(nums, target):
+    for i in range(len(nums)):
+        for j in range(i+1, len(nums)):
+            if nums[i] + nums[j] == target:
+                return [i, j]`}
+            </pre>
+          </div>
+          <p className="text-xs font-bold text-rose-600 dark:text-rose-400">Complexity: Time O(n²)</p>
+        </div>
+      )
     },
     {
       icon: Zap,
-      title: "3. Optimize & Pattern Recognition",
+      title: "3. Optimize the Solution",
       color: "text-amber-600",
       bg: "bg-amber-50",
-      points: [
-        "Look for patterns or repeated work in the brute force solution.",
-        "Can we use a better data structure? (e.g., Hash Map for O(1) lookup).",
-        "Can we use a specific algorithm? (e.g., Two Pointers, Sliding Window, Binary Search).",
-        "Consider trade-offs between time and space complexity.",
-        "Aim for the most optimal complexity based on constraints."
-      ]
+      content: (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">👉 Think:</h4>
+            <ul className="list-disc list-inside text-sm text-slate-600 dark:text-slate-400 space-y-1 ml-2">
+              <li>Can we reduce time complexity?</li>
+              <li>Use a better data structure?</li>
+            </ul>
+          </div>
+          <div className="bg-slate-900 rounded-xl p-4 overflow-hidden">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Optimized (HashMap)</span>
+            </div>
+            <pre className="text-[10px] font-mono text-amber-300 leading-relaxed overflow-x-auto">
+{`def two_sum(nums, target):
+    d = {}
+    for i, num in enumerate(nums):
+        if target - num in d:
+            return [d[target - num], i]
+        d[num] = i`}
+            </pre>
+          </div>
+          <p className="text-xs font-bold text-amber-600 dark:text-amber-400">Complexity: Time O(n)</p>
+        </div>
+      )
     },
     {
-      icon: FileText,
-      title: "4. Dry Run with Examples",
-      color: "text-emerald-600",
-      bg: "bg-emerald-50",
-      points: [
-        "Take a small sample input and trace your logic step-by-step.",
-        "Use edge cases (e.g., empty input, single element, all duplicates).",
-        "Verify if the logic produces the correct output.",
-        "This helps catch logical errors before you start coding."
-      ]
+      icon: Database,
+      title: "4. Choose Right Data Structure",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      content: (
+        <div className="space-y-4">
+          <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">👉 Common Choices:</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { name: "Array", use: "Index-based" },
+              { name: "HashMap", use: "Fast lookup" },
+              { name: "Stack", use: "LIFO" },
+              { name: "Queue", use: "BFS" },
+              { name: "Tree", use: "Hierarchy" },
+              { name: "Graph", use: "Networks" }
+            ].map(ds => (
+              <div key={ds.name} className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{ds.name}</p>
+                <p className="text-[10px] text-slate-500">→ {ds.use}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    },
+    {
+      icon: GitBranch,
+      title: "5. Identify Pattern",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      content: (
+        <div className="space-y-4">
+          <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">👉 Common Patterns:</h4>
+          <div className="flex flex-wrap gap-2">
+            {["Two Pointer", "Sliding Window", "Binary Search", "Recursion", "Backtracking", "Greedy", "Dynamic Programming"].map(p => (
+              <span key={p} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md text-[10px] font-bold">{p}</span>
+            ))}
+          </div>
+        </div>
+      )
     },
     {
       icon: Code,
-      title: "5. Implementation",
-      color: "text-indigo-600",
-      bg: "bg-indigo-50",
-      points: [
-        "Write clean, readable code with meaningful variable names.",
-        "Follow the logic you dry-ran in the previous step.",
-        "Handle edge cases explicitly.",
-        "Keep the code modular if possible."
-      ]
+      title: "6. Write Clean Code",
+      color: "text-violet-600",
+      bg: "bg-violet-50",
+      content: (
+        <div className="space-y-4">
+          <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">👉 Tips:</h4>
+          <ul className="space-y-2">
+            {[
+              "Use meaningful variable names",
+              "Keep code simple",
+              "Follow structure"
+            ].map((tip, i) => (
+              <li key={i} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <div className="w-1.5 h-1.5 bg-violet-400 rounded-full" />
+                {tip}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
     },
     {
-      icon: ShieldCheck,
-      title: "6. Review & Analyze",
-      color: "text-rose-600",
-      bg: "bg-rose-50",
-      points: [
-        "Double-check your code for syntax or logical errors.",
-        "Re-calculate the final time and space complexity.",
-        "Explain your solution clearly (if in an interview).",
-        "Think about how the solution could be further improved or scaled."
-      ]
+      icon: Activity,
+      title: "7. Dry Run (Very Important 🔥)",
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+      content: (
+        <div className="space-y-4">
+          <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">👉 Manually test:</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Small inputs</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Edge cases</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] text-slate-500 italic">Example: Empty array, Single element</p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      icon: Clock,
+      title: "8. Analyze Complexity",
+      color: "text-cyan-600",
+      bg: "bg-cyan-50",
+      content: (
+        <div className="space-y-4">
+          <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">👉 Check:</h4>
+          <div className="space-y-3">
+            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+              <p className="text-xs font-bold text-cyan-600">Time Complexity</p>
+              <p className="text-[10px] text-slate-500">→ Fast or slow?</p>
+            </div>
+            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+              <p className="text-xs font-bold text-cyan-600">Space Complexity</p>
+              <p className="text-[10px] text-slate-500">→ Memory usage</p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      icon: Rocket,
+      title: "9. Optimize Further",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      content: (
+        <div className="space-y-4">
+          <ul className="space-y-2">
+            {[
+              "Reduce loops",
+              "Avoid extra space",
+              "Use better algorithms"
+            ].map((opt, i) => (
+              <li key={i} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+                {opt}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    },
+    {
+      icon: Trophy,
+      title: "10. Practice & Repeat",
+      color: "text-yellow-600",
+      bg: "bg-yellow-50",
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            👉 The more problems you solve, the better you get.
+          </p>
+          <div className="p-4 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-900/50">
+            <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400 text-center">Consistency is key! 🚀</p>
+          </div>
+        </div>
+      )
     }
   ];
 
@@ -1364,29 +1537,26 @@ function QuestionsApproach() {
         </div>
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white">How to Approach DSA Questions</h1>
         <p className="text-slate-500 dark:text-slate-400 text-lg max-w-3xl">
-          A systematic framework to tackle any coding problem, from understanding requirements to delivering an optimized solution.
+          A systematic 10-step framework to tackle any coding problem, from understanding requirements to delivering an optimized solution.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {steps.map((step, index) => (
           <motion.div
             key={index}
             whileHover={{ y: -5 }}
-            className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all"
+            className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all flex flex-col"
           >
-            <div className={`w-12 h-12 ${step.bg} dark:bg-slate-800 ${step.color} rounded-xl flex items-center justify-center mb-6`}>
-              <step.icon size={24} />
+            <div className="flex items-center gap-4 mb-6">
+              <div className={`w-12 h-12 ${step.bg} dark:bg-slate-800 ${step.color} rounded-2xl flex items-center justify-center shrink-0`}>
+                <step.icon size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">{step.title}</h3>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">{step.title}</h3>
-            <ul className="space-y-3">
-              {step.points.map((point, pIndex) => (
-                <li key={pIndex} className="flex gap-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                  <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-2 shrink-0" />
-                  {point}
-                </li>
-              ))}
-            </ul>
+            <div className="flex-1">
+              {step.content}
+            </div>
           </motion.div>
         ))}
       </div>
@@ -1651,93 +1821,193 @@ function LinearOverviewContent({ setMode }: { setMode: (m: LearnMode) => void })
       </motion.section>
 
       {/* Types */}
-      <motion.section variants={itemVariants} className="space-y-8">
+      <motion.section variants={itemVariants} className="space-y-12">
         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Types of Linear Data Structures</h2>
         
-        <div className="grid grid-cols-1 gap-6">
+        <div className="space-y-12">
           {/* Array */}
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-indigo-200 transition-colors">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                <Grid3X3 size={24} />
+          <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-indigo-200 transition-all">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <Grid3X3 size={28} />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Array</h3>
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">1. Array</h3>
+                <p className="text-slate-500">Fixed-size sequential storage</p>
+              </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <p className="text-slate-600 dark:text-slate-400">An Array is a collection of elements stored in contiguous memory locations. Each element can be accessed using an index value.</p>
-                <div className="flex flex-wrap gap-2">
-                  {['Fast access using index', 'Fixed size', 'Efficient for similar types'].map(f => (
-                    <span key={f} className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-bold">{f}</span>
-                  ))}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">👉 What is an Array?</h4>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">An array is a collection of elements stored in continuous memory locations.</p>
+                </div>
+                
+                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                  <h4 className="font-bold text-slate-900 dark:text-white mb-3 text-sm uppercase tracking-widest opacity-50">👉 Example</h4>
+                  <div className="space-y-2">
+                    <div className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">arr = [10, 20, 30, 40]</div>
+                    <p className="text-xs text-slate-500 italic">Index starts from 0. arr[0] = 10</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Time Complexity</h5>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">Access: O(1)</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">Insert/Delete: O(n)</p>
+                    </div>
+                  </div>
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Use Cases</h5>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">Data lists, Searching & sorting</p>
+                  </div>
                 </div>
               </div>
-              <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center">
-                <div className="flex gap-2">
-                  {[10, 20, 30, 40, 50].map((n, i) => (
-                    <div key={i} className="w-12 h-12 bg-indigo-600 rounded-lg flex flex-col items-center justify-center text-white font-bold shadow-lg">
-                      {n}
-                      <span className="text-[8px] opacity-50">{i}</span>
+
+              <div className="space-y-6">
+                <div className="bg-slate-900 rounded-3xl p-6 overflow-hidden">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Python Code</span>
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                     </div>
-                  ))}
+                  </div>
+                  <pre className="text-xs font-mono text-indigo-300 leading-relaxed overflow-x-auto">
+{`arr = [10, 20, 30, 40]
+
+print(arr[0])  # Access
+arr.append(50) # Insert
+arr.pop()      # Delete`}
+                  </pre>
+                </div>
+                <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center">
+                  <div className="flex gap-2">
+                    {[10, 20, 30, 40].map((n, i) => (
+                      <div key={i} className="w-12 h-12 bg-indigo-600 rounded-lg flex flex-col items-center justify-center text-white font-bold shadow-lg">
+                        {n}
+                        <span className="text-[8px] opacity-50">{i}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Linked List */}
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-emerald-200 transition-colors">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <Link size={24} />
+          {/* String */}
+          <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-sky-200 transition-all">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 bg-sky-100 dark:bg-sky-900/30 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400">
+                <Type size={28} />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Linked List</h3>
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">2. String</h3>
+                <p className="text-slate-500">Sequence of characters</p>
+              </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <p className="text-slate-600 dark:text-slate-400">A Linked List is a collection of nodes where each node contains data and a reference to the next node. They do not store elements in contiguous memory.</p>
-                <div className="flex flex-wrap gap-2">
-                  {['Dynamic size', 'Efficient insertion/deletion', 'Connected via pointers'].map(f => (
-                    <span key={f} className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-bold">{f}</span>
-                  ))}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">👉 What is a String?</h4>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">A string is a sequence of characters.</p>
+                </div>
+                
+                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                  <h4 className="font-bold text-slate-900 dark:text-white mb-3 text-sm uppercase tracking-widest opacity-50">👉 Example</h4>
+                  <div className="space-y-2">
+                    <div className="font-mono text-sky-600 dark:text-sky-400 font-bold">"HELLO"</div>
+                    <p className="text-xs text-slate-500 italic">Index: H → 0, E → 1, L → 2, L → 3, O → 4</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Time Complexity</h5>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">Access: O(1)</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">Operations: O(n)</p>
+                    </div>
+                  </div>
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Use Cases</h5>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">Text processing, Pattern searching</p>
+                  </div>
                 </div>
               </div>
-              <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center">
-                <div className="flex items-center gap-2">
-                  {[10, 20, 30, 40].map((n, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
-                        {n}
+
+              <div className="space-y-6">
+                <div className="bg-slate-900 rounded-3xl p-6 overflow-hidden">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Python Code</span>
+                  </div>
+                  <pre className="text-xs font-mono text-sky-300 leading-relaxed overflow-x-auto">
+{`s = "hello"
+
+print(s[0])        # Access
+print(s[::-1])     # Reverse
+print(len(s))      # Length`}
+                  </pre>
+                </div>
+                <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center">
+                  <div className="flex gap-1">
+                    {['H', 'E', 'L', 'L', 'O'].map((char, i) => (
+                      <div key={i} className="w-10 h-10 bg-sky-600 rounded flex flex-col items-center justify-center text-white font-bold shadow-lg">
+                        {char}
+                        <span className="text-[8px] opacity-50">{i}</span>
                       </div>
-                      <ArrowRight size={16} className="text-emerald-400" />
-                    </div>
-                  ))}
-                  <div className="text-emerald-400 font-mono font-bold">NULL</div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Stack */}
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-amber-200 transition-colors">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400">
-                <Layers size={24} />
+          <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-amber-200 transition-all">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                <Layers size={28} />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Stack (LIFO)</h3>
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">3. Stack (LIFO)</h3>
+                <p className="text-slate-500">Last In, First Out</p>
+              </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <p className="text-slate-600 dark:text-slate-400">A Stack follows the Last In, First Out principle. The last element inserted is the first one to be removed.</p>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">👉 What is a Stack?</h4>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">Stack follows LIFO (Last In First Out). Example: Stack of plates.</p>
+                </div>
+                
                 <div className="flex flex-wrap gap-2">
-                  {['Push', 'Pop', 'Peek', 'Undo Operations'].map(f => (
-                    <span key={f} className="px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full text-xs font-bold">{f}</span>
+                  {['Push → Add', 'Pop → Remove', 'Peek → View Top'].map(f => (
+                    <span key={f} className="px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full text-xs font-bold border border-amber-100 dark:border-amber-800">{f}</span>
                   ))}
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Time Complexity</h5>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">O(1)</p>
+                  </div>
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Use Cases</h5>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">Undo/Redo, Function calls</p>
+                  </div>
+                </div>
+
                 <div className="pt-4 flex gap-2">
                   <button 
                     onClick={() => {
-                      const stack = document.getElementById('stack-container');
+                      const stack = document.getElementById('stack-container-overview');
                       if (stack) {
                         const el = document.createElement('div');
                         el.className = 'w-24 h-10 bg-amber-500 rounded flex items-center justify-center text-white font-bold shadow-lg mb-2 animate-bounce';
@@ -1745,59 +2015,96 @@ function LinearOverviewContent({ setMode }: { setMode: (m: LearnMode) => void })
                         stack.prepend(el);
                       }
                     }}
-                    className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 transition-colors"
+                    className="px-6 py-3 bg-amber-600 text-white rounded-2xl font-bold hover:bg-amber-700 transition-all shadow-lg shadow-amber-200"
                   >
-                    Push Element
+                    Push
                   </button>
                   <button 
                     onClick={() => {
-                      const stack = document.getElementById('stack-container');
+                      const stack = document.getElementById('stack-container-overview');
                       if (stack && stack.firstChild) {
                         (stack.firstChild as HTMLElement).classList.add('translate-x-full', 'opacity-0');
                         setTimeout(() => stack.removeChild(stack.firstChild!), 300);
                       }
                     }}
-                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
                   >
-                    Pop Element
+                    Pop
                   </button>
                 </div>
               </div>
-              <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center min-h-[200px]">
-                <div id="stack-container" className="flex flex-col gap-2 border-x-2 border-b-2 border-amber-500/30 p-4 rounded-b-xl w-32 items-center">
-                  {[30, 20, 10].map((n, i) => (
-                    <div 
-                      key={i}
-                      className="w-24 h-10 bg-amber-600 rounded flex items-center justify-center text-white font-bold shadow-lg transition-all duration-300"
-                    >
-                      {n}
-                    </div>
-                  ))}
+
+              <div className="space-y-6">
+                <div className="bg-slate-900 rounded-3xl p-6 overflow-hidden">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Python Code</span>
+                  </div>
+                  <pre className="text-xs font-mono text-amber-300 leading-relaxed overflow-x-auto">
+{`stack = []
+
+stack.append(10)  # push
+stack.append(20)
+stack.pop()       # pop
+
+print(stack[-1])  # peek`}
+                  </pre>
+                </div>
+                <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center min-h-[200px]">
+                  <div id="stack-container-overview" className="flex flex-col gap-2 border-x-2 border-b-2 border-amber-500/30 p-4 rounded-b-xl w-32 items-center">
+                    {[30, 20, 10].map((n, i) => (
+                      <div 
+                        key={i}
+                        className="w-24 h-10 bg-amber-600 rounded flex items-center justify-center text-white font-bold shadow-lg transition-all duration-300"
+                      >
+                        {n}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Queue */}
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-rose-200 transition-colors">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
-                <Users size={24} />
+          <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-rose-200 transition-all">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 bg-rose-100 dark:bg-rose-900/30 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                <Users size={28} />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Queue (FIFO)</h3>
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">4. Queue (FIFO)</h3>
+                <p className="text-slate-500">First In, First Out</p>
+              </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <p className="text-slate-600 dark:text-slate-400">A Queue follows the First In, First Out principle. The first element inserted is the first one to be removed.</p>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">👉 What is a Queue?</h4>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">Queue follows FIFO (First In First Out). Example: Queue in a line.</p>
+                </div>
+                
                 <div className="flex flex-wrap gap-2">
-                  {['Enqueue', 'Dequeue', 'Task Scheduling', 'Print Queues'].map(f => (
-                    <span key={f} className="px-3 py-1 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-full text-xs font-bold">{f}</span>
+                  {['Enqueue → Add', 'Dequeue → Remove'].map(f => (
+                    <span key={f} className="px-3 py-1 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-full text-xs font-bold border border-rose-100 dark:border-rose-800">{f}</span>
                   ))}
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Time Complexity</h5>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">O(1)</p>
+                  </div>
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Use Cases</h5>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">Scheduling, Buffer systems, BFS</p>
+                  </div>
+                </div>
+
                 <div className="pt-4 flex gap-2">
                   <button 
                     onClick={() => {
-                      const queue = document.getElementById('queue-container');
+                      const queue = document.getElementById('queue-container-overview');
                       if (queue) {
                         const el = document.createElement('div');
                         el.className = 'w-12 h-12 bg-rose-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shrink-0 animate-pulse';
@@ -1805,38 +2112,135 @@ function LinearOverviewContent({ setMode }: { setMode: (m: LearnMode) => void })
                         queue.appendChild(el);
                       }
                     }}
-                    className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors"
+                    className="px-6 py-3 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
                   >
                     Enqueue
                   </button>
                   <button 
                     onClick={() => {
-                      const queue = document.getElementById('queue-container');
+                      const queue = document.getElementById('queue-container-overview');
                       if (queue && queue.firstChild) {
                         (queue.firstChild as HTMLElement).classList.add('-translate-x-full', 'opacity-0');
                         setTimeout(() => queue.removeChild(queue.firstChild!), 300);
                       }
                     }}
-                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
                   >
                     Dequeue
                   </button>
                 </div>
               </div>
-              <div className="bg-slate-900 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[200px]">
-                <div className="flex gap-2 items-center w-full overflow-hidden px-4">
-                  <span className="text-[10px] text-rose-400 font-bold uppercase shrink-0">Front</span>
-                  <div id="queue-container" className="flex gap-2 items-center flex-1">
+
+              <div className="space-y-6">
+                <div className="bg-slate-900 rounded-3xl p-6 overflow-hidden">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Python Code</span>
+                  </div>
+                  <pre className="text-xs font-mono text-rose-300 leading-relaxed overflow-x-auto">
+{`from collections import deque
+
+queue = deque()
+
+queue.append(10)   # enqueue
+queue.append(20)
+queue.popleft()    # dequeue
+
+print(queue)`}
+                  </pre>
+                </div>
+                <div className="bg-slate-900 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[200px]">
+                  <div className="flex gap-2 items-center w-full overflow-hidden px-4">
+                    <span className="text-[10px] text-rose-400 font-bold uppercase shrink-0">Front</span>
+                    <div id="queue-container-overview" className="flex gap-2 items-center flex-1">
+                      {[10, 20, 30].map((n, i) => (
+                        <div 
+                          key={i}
+                          className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg transition-all duration-300 shrink-0"
+                        >
+                          {n}
+                        </div>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-rose-400 font-bold uppercase shrink-0">Rear</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Linked List */}
+          <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm group hover:border-emerald-200 transition-all">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <Link size={28} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">5. Linked List</h3>
+                <p className="text-slate-500">Dynamic pointer-based storage</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">👉 What is a Linked List?</h4>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">A linked list is a collection of nodes where each node contains data and a pointer to the next node.</p>
+                </div>
+                
+                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                  <h4 className="font-bold text-slate-900 dark:text-white mb-3 text-sm uppercase tracking-widest opacity-50">👉 Example</h4>
+                  <div className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-lg">10 → 20 → 30 → 40</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Time Complexity</h5>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">Access: O(n)</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">Insert/Delete: O(1)*</p>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">*If position is known</p>
+                  </div>
+                  <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <h5 className="font-bold text-xs text-slate-400 mb-1">Use Cases</h5>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">Dynamic memory, Stacks & queues</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-slate-900 rounded-3xl p-6 overflow-hidden">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Python Code</span>
+                  </div>
+                  <pre className="text-xs font-mono text-emerald-300 leading-relaxed overflow-x-auto">
+{`class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+
+# Create nodes
+head = Node(10)
+second = Node(20)
+third = Node(30)
+
+# Link nodes
+head.next = second
+second.next = third`}
+                  </pre>
+                </div>
+                <div className="bg-slate-900 rounded-2xl p-6 flex items-center justify-center">
+                  <div className="flex items-center gap-2">
                     {[10, 20, 30].map((n, i) => (
-                      <div 
-                        key={i}
-                        className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg transition-all duration-300 shrink-0"
-                      >
-                        {n}
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">
+                          {n}
+                        </div>
+                        <ArrowRight size={16} className="text-emerald-400" />
                       </div>
                     ))}
+                    <div className="text-emerald-400 font-mono font-bold">NULL</div>
                   </div>
-                  <span className="text-[10px] text-rose-400 font-bold uppercase shrink-0">Rear</span>
                 </div>
               </div>
             </div>
@@ -1923,6 +2327,343 @@ function LinearOverviewContent({ setMode }: { setMode: (m: LearnMode) => void })
             className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
           >
             Practice Linear Structures
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function NonLinearOverviewContent({ setMode }: { setMode: (m: LearnMode) => void }) {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  return (
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-12 pb-20"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold uppercase tracking-widest">
+          <Network size={14} /> Non-Linear Data Structures
+        </div>
+        <h1 className="text-4xl font-bold text-slate-900 dark:text-white">📌 Overview</h1>
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              👉 What are Non-Linear Data Structures?
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed">
+              Non-linear data structures are those where elements are not arranged sequentially.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">➡️ In linear (Array, Linked List)</span>
+                <div className="font-mono text-indigo-600 dark:text-indigo-400 font-bold text-xl">A → B → C → D</div>
+              </div>
+              <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800">
+                <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2 block">➡️ In non-linear</span>
+                <ul className="space-y-2 text-slate-700 dark:text-slate-300 font-medium">
+                  <li className="flex items-center gap-2"><Check size={14} className="text-indigo-500" /> Data is arranged in hierarchy or network</li>
+                  <li className="flex items-center gap-2"><Check size={14} className="text-indigo-500" /> One element can connect to multiple elements</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Types & Why Use */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <motion.section variants={itemVariants} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+            👉 Types of Non-Linear Data Structures
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800">
+              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white">
+                <GitBranch size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-emerald-900 dark:text-emerald-400">Tree 🌳</h4>
+                <p className="text-xs text-emerald-700 dark:text-emerald-500">Hierarchical Structure</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800">
+              <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white">
+                <Network size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-blue-900 dark:text-blue-400">Graph 📊</h4>
+                <p className="text-xs text-blue-700 dark:text-blue-500">Network Structure</p>
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section variants={itemVariants} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+            👉 Why Use Non-Linear Structures?
+          </h3>
+          <ul className="space-y-4">
+            {[
+              "Represent complex relationships",
+              "Used in real-world systems like File systems",
+              "Social networks & Navigation systems"
+            ].map((text, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                  <Check size={14} />
+                </div>
+                <span className="text-slate-700 dark:text-slate-300 font-medium">{text}</span>
+              </li>
+            ))}
+          </ul>
+        </motion.section>
+      </div>
+
+      {/* Comparison Table */}
+      <motion.section variants={itemVariants} className="overflow-hidden rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-800">
+              <th className="p-6 font-bold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700">Feature</th>
+              <th className="p-6 font-bold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700">Tree 🌳</th>
+              <th className="p-6 font-bold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700">Graph 📊</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-slate-900">
+            {[
+              { f: "Structure", t: "Hierarchical", g: "Network" },
+              { f: "Cycles", t: "No cycles", g: "Can have cycles" },
+              { f: "Root", t: "Yes", g: "No fixed root" },
+              { f: "Connections", t: "One parent", g: "Multiple connections" },
+              { f: "Example", t: "Folder structure", g: "Social network" }
+            ].map((row, i) => (
+              <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <td className="p-6 text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800">{row.f}</td>
+                <td className="p-6 text-sm text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">{row.t}</td>
+                <td className="p-6 text-sm text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">{row.g}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </motion.section>
+
+      {/* Detailed Sections */}
+      <div className="space-y-12">
+        {/* Tree Section */}
+        <motion.section variants={itemVariants} className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <GitBranch size={28} />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">1. Tree</h2>
+              <p className="text-slate-500">Hierarchical data structure</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="space-y-8">
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">👉 What is a Tree?</h4>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                  A tree is a hierarchical structure with a root node and child nodes.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                  <h5 className="font-bold text-xs uppercase tracking-widest text-slate-400 mb-2">Key Terms</h5>
+                  <ul className="text-sm space-y-1 text-slate-600 dark:text-slate-400">
+                    <li>Root → Top node</li>
+                    <li>Parent → Node with children</li>
+                    <li>Child → Node under parent</li>
+                    <li>Leaf → Node with no children</li>
+                  </ul>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                  <h5 className="font-bold text-xs uppercase tracking-widest text-slate-400 mb-2">Types</h5>
+                  <ul className="text-sm space-y-1 text-slate-600 dark:text-slate-400">
+                    <li>Binary Tree</li>
+                    <li>Binary Search Tree</li>
+                    <li>AVL Tree</li>
+                    <li>Heap</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">👉 Tree Traversal</h4>
+                <div className="flex flex-wrap gap-3">
+                  {['Inorder (LNR)', 'Preorder (NLR)', 'Postorder (LRN)'].map(t => (
+                    <span key={t} className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold border border-emerald-100 dark:border-emerald-800">{t}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-slate-900 rounded-3xl p-6 overflow-hidden">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Python Implementation</span>
+                  <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  </div>
+                </div>
+                <pre className="text-xs font-mono text-indigo-300 leading-relaxed overflow-x-auto">
+{`class Node:
+    def __init__(self, value):
+        self.value = value
+        self.left = None
+        self.right = None
+
+def inorder(root):
+    if root:
+        inorder(root.left)
+        print(root.value, end=" ")
+        inorder(root.right)`}
+                </pre>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                  <h5 className="font-bold text-xs text-slate-400 mb-1">Time Complexity</h5>
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">O(n)</p>
+                </div>
+                <div className="p-4 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                  <h5 className="font-bold text-xs text-slate-400 mb-1">Use Case</h5>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">File Systems</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* Graph Section */}
+        <motion.section variants={itemVariants} className="bg-slate-900 rounded-[3rem] p-10 text-white relative overflow-hidden">
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-blue-400">
+                <Network size={28} />
+              </div>
+              <div>
+                <h2 className="text-3xl font-bold">2. Graph</h2>
+                <p className="text-slate-400">Network of nodes and edges</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-8">
+                <div>
+                  <h4 className="font-bold text-blue-400 mb-3 flex items-center gap-2">👉 What is a Graph?</h4>
+                  <p className="text-slate-300 leading-relaxed">
+                    A graph is a collection of nodes (vertices) and edges (connections).
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <h5 className="font-bold text-xs uppercase tracking-widest text-slate-500">Types</h5>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>Directed Graph (→)</li>
+                      <li>Undirected Graph (—)</li>
+                      <li>Weighted Graph</li>
+                      <li>Unweighted Graph</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h5 className="font-bold text-xs uppercase tracking-widest text-slate-500">Traversal</h5>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>BFS (Breadth First Search)</li>
+                      <li>DFS (Depth First Search)</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+                  <h4 className="font-bold text-blue-400 mb-3">👉 Use Cases</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2 text-sm text-slate-300">
+                      <Users size={14} className="text-blue-400" /> Social Networks
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-300">
+                      <Map size={14} className="text-blue-400" /> Google Maps
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-black/40 backdrop-blur-md rounded-3xl p-6 border border-white/5">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Python (BFS)</span>
+                  </div>
+                  <pre className="text-xs font-mono text-blue-300 leading-relaxed overflow-x-auto">
+{`from collections import deque
+
+def bfs(graph, start):
+    visited = set()
+    queue = deque([start])
+
+    while queue:
+        node = queue.popleft()
+        if node not in visited:
+            print(node, end=" ")
+            visited.add(node)
+            queue.extend(graph[node])`}
+                  </pre>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <h5 className="font-bold text-xs text-slate-500 mb-1">Complexity</h5>
+                    <p className="text-xl font-bold">O(V + E)</p>
+                  </div>
+                  <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <h5 className="font-bold text-xs text-slate-500 mb-1">Real-world</h5>
+                    <p className="text-sm font-bold">Routing</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px]" />
+        </motion.section>
+      </div>
+
+      {/* Conclusion */}
+      <motion.div variants={itemVariants} className="text-center max-w-2xl mx-auto space-y-6">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Ready to Practice?</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed">
+          Non-linear data structures are essential for solving complex real-world problems. Master Trees and Graphs to build sophisticated systems.
+        </p>
+        <div className="pt-8 flex justify-center gap-4">
+          <button 
+            onClick={() => setMode('flashcards')}
+            className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
+          >
+            Flashcards
+          </button>
+          <button 
+            onClick={() => setMode('quiz')}
+            className="px-10 py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200"
+          >
+            Take Quiz
           </button>
         </div>
       </motion.div>

@@ -71,6 +71,18 @@ export function PrepareSection({ careerPath, onStartTest }: {
     }
     return '';
   });
+  const [examName, setExamName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('prepare_examName') || '';
+    }
+    return '';
+  });
+  const [customRole, setCustomRole] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('prepare_customRole') || '';
+    }
+    return '';
+  });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -89,7 +101,15 @@ export function PrepareSection({ careerPath, onStartTest }: {
     localStorage.setItem('prepare_companyOrExam', companyOrExam);
   }, [companyOrExam]);
 
-  const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'AI Engineer'];
+  useEffect(() => {
+    localStorage.setItem('prepare_examName', examName);
+  }, [examName]);
+
+  useEffect(() => {
+    localStorage.setItem('prepare_customRole', customRole);
+  }, [customRole]);
+
+  const roles = ['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'DevOps Engineer', 'Mobile Developer', 'AI Engineer', 'Custom', 'Other'];
   const durations = [
     { label: '7 Days', value: '7' },
     { label: '15 Days', value: '15' },
@@ -146,16 +166,19 @@ export function PrepareSection({ careerPath, onStartTest }: {
     }
   ];
 
+  const getDisplayRole = () => (selectedRole === 'Custom' || selectedRole === 'Other') ? customRole : selectedRole;
+
   const generateRolePlan = async () => {
     setLoading(true);
     setGeneratedContent(null);
+    const displayRole = getDisplayRole();
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Generate a ${selectedDuration}-day study plan for a ${selectedRole} position. 
+        contents: `Generate a ${selectedDuration}-day study plan for a ${displayRole} position. 
         1. Explain what this preparation plan is.
-        2. Explain why this specific plan is effective for a ${selectedRole}.
+        2. Explain why this specific plan is effective for a ${displayRole}.
         3. Provide a structured learning path divided into logical phases or weeks. Each phase should have a focus and daily topics.
         Include key resources or concepts to study.
         Return the response as a JSON object with this schema:
@@ -253,23 +276,29 @@ export function PrepareSection({ careerPath, onStartTest }: {
   };
 
   const generateCompanyExamPlan = async () => {
-    if (!companyOrExam) return;
+    if (!companyOrExam && !examName) return;
     setLoading(true);
     setGeneratedContent(null);
+    const displayRole = getDisplayRole();
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Provide a comprehensive preparation guide for ${companyOrExam} (Company/Role or Exam).
-        1. Explain what this guide covers and why it is essential for ${companyOrExam}.
-        2. Explain the full interview/exam pattern.
-        3. Provide expert tricks and tips for success.
-        4. Create a ${selectedDuration}-day learning path/plan.
-        5. Provide 3-5 high-quality external resource links (Google search results/official links).
-        6. Explain how AI can specifically help in this preparation.
+        contents: `Provide a comprehensive preparation guide and recruitment analysis for:
+        Company: ${companyOrExam}
+        Exam: ${examName}
+        Target Role: ${displayRole}
+
+        1. Analyze the recruitment process and list all the rounds (e.g., Round 1: Online Assessment, Round 2: Technical Interview, etc.).
+        2. Specifically analyze Round 1 in detail: What is the format? (e.g., MCQs, Coding, Aptitude, Duration, Number of questions).
+        3. Explain what this guide covers and why it is essential.
+        4. Provide expert tricks and tips for success in each round.
+        5. Create a ${selectedDuration}-day learning path/plan.
+        6. Provide 3-5 high-quality external resource links (Google search results/official links).
+        7. Explain how AI can specifically help in this preparation.
         
-        IMPORTANT: For the mock test configuration, ensure it reflects the actual exam/interview pattern. 
-        When generating questions later, the AI should use Google Search to find previous year questions or similar high-quality patterns.
+        IMPORTANT: For the mock test configuration, ensure it reflects the ACTUAL Round 1 format of ${companyOrExam}/${examName}. 
+        If it's an online assessment, include details about the sections (Aptitude, Core CS, Coding).
         
         Return the response as a JSON object with this schema:
         {
@@ -277,6 +306,16 @@ export function PrepareSection({ careerPath, onStartTest }: {
           "whatIsThis": "string",
           "whyUseThis": "string",
           "learningPathOverview": "string",
+          "rounds": [
+            { "name": "string", "description": "string", "isRound1": "boolean" }
+          ],
+          "round1Format": {
+            "type": "string (e.g., MCQ + Coding)",
+            "duration": "string",
+            "sections": [
+              { "name": "string", "count": "number", "topics": ["string"] }
+            ]
+          },
           "pattern": [
             { "step": "string", "details": "string" }
           ],
@@ -290,11 +329,11 @@ export function PrepareSection({ careerPath, onStartTest }: {
           "aiUtility": "string",
           "companyDomain": "string (e.g., google.com, amazon.com - only for companies, empty for exams)",
           "mockTestConfig": {
-            "mode": "string (must be 'company-round')",
+            "mode": "string (must be 'comprehensive-company-test')",
             "company": "string",
             "role": "string",
             "examName": "string",
-            "context": "string (detailed context about the pattern and topics to focus on)"
+            "context": "string (detailed context about the Round 1 pattern and topics to focus on. Be very specific about question counts and types. IF CODING IS PART OF ROUND 1, EXPLICITLY MENTION IT HERE so the test generator includes a coding section.)"
           }
         }`,
         config: { 
@@ -302,7 +341,12 @@ export function PrepareSection({ careerPath, onStartTest }: {
           tools: [{ googleSearch: {} }]
         }
       });
-      setGeneratedContent(JSON.parse(response.text));
+      const data = JSON.parse(response.text);
+      // Ensure the role in mockTestConfig is the display role
+      if (data.mockTestConfig) {
+        data.mockTestConfig.role = displayRole;
+      }
+      setGeneratedContent(data);
     } catch (error) {
       console.error(error);
     } finally {
@@ -312,12 +356,13 @@ export function PrepareSection({ careerPath, onStartTest }: {
   const generateRoadmap = async () => {
     setLoading(true);
     setGeneratedContent(null);
+    const displayRole = getDisplayRole();
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Generate a career roadmap for a ${selectedRole}. 
-        1. Explain what this roadmap represents for a ${selectedRole} career.
+        contents: `Generate a career roadmap for a ${displayRole}. 
+        1. Explain what this roadmap represents for a ${displayRole} career.
         2. Explain why following this path is beneficial for long-term growth.
         3. List the stages of learning from fundamentals to advanced specialization.
         For each stage, list the required skills and tools.
@@ -568,21 +613,57 @@ export function PrepareSection({ careerPath, onStartTest }: {
             {(mode === 'role-plan' || mode === 'roadmap' || mode === 'company-exam') && !generatedContent && (
               <div className="flex flex-wrap items-center gap-3">
                 {mode === 'company-exam' ? (
-                  <input
-                    type="text"
-                    placeholder="Enter Company (e.g. Google) or Exam (e.g. GATE)"
-                    value={companyOrExam}
-                    onChange={(e) => setCompanyOrExam(e.target.value)}
-                    className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white min-w-[300px]"
-                  />
+                  <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Company Name (e.g. Google)"
+                      value={companyOrExam}
+                      onChange={(e) => setCompanyOrExam(e.target.value)}
+                      className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white min-w-[200px]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Exam Name (Optional)"
+                      value={examName}
+                      onChange={(e) => setExamName(e.target.value)}
+                      className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white min-w-[200px]"
+                    />
+                    <select 
+                      value={selectedRole}
+                      onChange={(e) => setSelectedRole(e.target.value)}
+                      className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                    >
+                      {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    {(selectedRole === 'Custom' || selectedRole === 'Other') && (
+                      <input
+                        type="text"
+                        placeholder="Enter Role Name"
+                        value={customRole}
+                        onChange={(e) => setCustomRole(e.target.value)}
+                        className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white min-w-[200px]"
+                      />
+                    )}
+                  </div>
                 ) : (
-                  <select 
-                    value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                    className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                  >
-                    {roles.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
+                  <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                    <select 
+                      value={selectedRole}
+                      onChange={(e) => setSelectedRole(e.target.value)}
+                      className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                    >
+                      {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    {(selectedRole === 'Custom' || selectedRole === 'Other') && (
+                      <input
+                        type="text"
+                        placeholder="Enter Role Name"
+                        value={customRole}
+                        onChange={(e) => setCustomRole(e.target.value)}
+                        className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white min-w-[200px]"
+                      />
+                    )}
+                  </div>
                 )}
                 
                 {(mode === 'role-plan' || mode === 'company-exam') && (
@@ -596,7 +677,7 @@ export function PrepareSection({ careerPath, onStartTest }: {
                 )}
                 <button 
                   onClick={mode === 'role-plan' ? generateRolePlan : mode === 'roadmap' ? generateRoadmap : generateCompanyExamPlan}
-                  disabled={loading || (mode === 'company-exam' && !companyOrExam)}
+                  disabled={loading || (mode === 'company-exam' && !companyOrExam && !examName)}
                   className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2"
                 >
                   {loading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
@@ -982,6 +1063,64 @@ export function PrepareSection({ careerPath, onStartTest }: {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Pattern & Info */}
                   <div className="lg:col-span-2 space-y-8">
+                    {generatedContent.rounds && (
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-6">
+                        <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
+                          <Target size={24} />
+                          <h3 className="text-2xl font-bold">Recruitment Rounds</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {generatedContent.rounds.map((round: any, i: number) => (
+                            <div key={i} className={`p-6 rounded-2xl border transition-all ${round.isRound1 ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 ring-2 ring-indigo-500/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-bold text-slate-900 dark:text-white">{round.name}</h4>
+                                {round.isRound1 && <span className="px-2 py-0.5 bg-indigo-600 text-white text-[10px] font-bold rounded-md uppercase">Current Focus</span>}
+                              </div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{round.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {generatedContent.round1Format && (
+                      <div className="bg-indigo-600 rounded-[2.5rem] p-10 text-white space-y-6 shadow-xl shadow-indigo-500/20">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Zap size={24} />
+                            <h3 className="text-2xl font-bold">Round 1: Test Format Analysis</h3>
+                          </div>
+                          <div className="px-4 py-1.5 bg-white/20 rounded-full text-xs font-bold backdrop-blur-md">
+                            {generatedContent.round1Format.duration}
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          {generatedContent.round1Format.sections.map((section: any, i: number) => (
+                            <div key={i} className="bg-white/10 rounded-2xl p-5 border border-white/10 backdrop-blur-sm">
+                              <div className="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mb-1">{section.name}</div>
+                              <div className="text-2xl font-bold mb-3">{section.count} Questions</div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {section.topics.map((t: string) => (
+                                  <span key={t} className="px-2 py-0.5 bg-white/10 rounded text-[10px] font-medium">{t}</span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="pt-4 flex justify-center">
+                          <button 
+                            onClick={() => onStartTest?.(generatedContent.mockTestConfig)}
+                            className="px-8 py-4 bg-white text-indigo-600 rounded-2xl font-black hover:bg-indigo-50 transition-all flex items-center gap-3 shadow-lg group"
+                          >
+                            <Trophy size={20} className="group-hover:rotate-12 transition-transform" />
+                            START ROUND 1 MOCK TEST
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-10 space-y-6">
                       <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
                         <Layout size={24} />

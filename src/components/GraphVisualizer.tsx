@@ -30,7 +30,7 @@ interface GraphNode {
   neighbors: Neighbor[];
 }
 
-export function GraphVisualizer({ initialViewMode = 'animation' }: { initialViewMode?: 'animation' | 'theory' }) {
+export function GraphVisualizer({ initialViewMode = 'animation', initialTraversalType = 'BFS' }: { initialViewMode?: 'animation' | 'theory', initialTraversalType?: 'BFS' | 'DFS' }) {
   const [nodes, setNodes] = useState<GraphNode[]>([
     { id: 'A', label: 'A', x: 150, y: 150, neighbors: [{ id: 'B', weight: 4 }, { id: 'C', weight: 2 }, { id: 'D', weight: 7 }] },
     { id: 'B', label: 'B', x: 450, y: 80, neighbors: [{ id: 'A', weight: 4 }, { id: 'C', weight: 5 }, { id: 'E', weight: 10 }] },
@@ -48,7 +48,7 @@ export function GraphVisualizer({ initialViewMode = 'animation' }: { initialView
   const [speed, setSpeed] = useState(800);
   const [showPseudocode, setShowPseudocode] = useState(false);
   const [viewMode, setViewMode] = useState<'animation' | 'theory'>(initialViewMode);
-  const [traversalType, setTraversalType] = useState<'BFS' | 'DFS'>('BFS');
+  const [traversalType, setTraversalType] = useState<'BFS' | 'DFS'>(initialTraversalType);
 
   // New states for adding edges
   const [newEdgeFrom, setNewEdgeFrom] = useState<string>('A');
@@ -57,7 +57,8 @@ export function GraphVisualizer({ initialViewMode = 'animation' }: { initialView
 
   useEffect(() => {
     setViewMode(initialViewMode);
-  }, [initialViewMode]);
+    setTraversalType(initialTraversalType);
+  }, [initialViewMode, initialTraversalType]);
 
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 

@@ -25,8 +25,13 @@ export const Pseudocode: React.FC<PseudocodeProps> = ({ code, activeLine }) => {
           {lines.map((line, i) => {
             // Simple syntax highlighting for common pseudocode keywords
             const highlightedLine = line.split(' ').map((word, idx) => {
-              const keywords = ['if', 'else', 'for', 'from', 'to', 'while', 'return', 'new', 'is', 'invalid'];
-              const isKeyword = keywords.includes(word.toLowerCase().replace(':', ''));
+              const keywords = [
+                'if', 'else', 'for', 'from', 'to', 'while', 'return', 'new', 'is', 'invalid',
+                'int', 'void', 'float', 'double', 'class', 'public', 'private', 'static', 'final',
+                'using', 'namespace', 'include', 'std', 'vector', 'swap', 'def', 'len', 'in', 'range'
+              ];
+              const cleanWord = word.toLowerCase().replace(/[:();,]/g, '');
+              const isKeyword = keywords.includes(cleanWord);
               
               return (
                 <span key={idx} className={isKeyword ? 'text-blue-600 font-medium' : ''}>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen, Edit2, X, Trophy } from 'lucide-react';
 import { TestResult, CompletedTopic } from '../types';
 import { CodingDashboard } from './CodingDashboard';
+import { InterviewReadiness } from './InterviewReadiness';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchAllPlatformStats, PlatformStats } from '../services/platformService';
 
@@ -34,6 +35,8 @@ export function Dashboard({
     ? (userData.totalStudyMinutes / 60).toFixed(1) + 'h'
     : '0.0h';
   
+  const [activeTab, setActiveTab] = useState<'overview' | 'readiness' | 'coding'>('overview');
+
   const usernames = (() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('coding_usernames');
@@ -187,135 +190,205 @@ export function Dashboard({
         )}
       </AnimatePresence>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard 
-          title="Total Solved" 
-          value={isLoadingStats ? "..." : totalSolved.toString()} 
-          change={platformStats.length > 0 ? `Across ${platformStats.length} platforms` : "Connect platforms"} 
-          icon={Trophy} 
-          color="text-amber-600" 
-          bgColor="bg-amber-50" 
-        />
-        <StatCard 
-          title="Study Hours" 
-          value={studyHours} 
-          change="Real-time" 
-          icon={Clock} 
-          color="text-blue-600" 
-          bgColor="bg-blue-50" 
-        />
-        <StatCard 
-          title="Tests Completed" 
-          value={history.length.toString()} 
-          change="+2" 
-          icon={ClipboardCheck} 
-          color="text-emerald-600" 
-          bgColor="bg-emerald-50" 
-        />
-        <StatCard 
-          title="Avg. Score" 
-          value={`${avgScore}%`} 
-          change="+5%" 
-          icon={BarChart3} 
-          color="text-indigo-600" 
-          bgColor="bg-indigo-50" 
-        />
-        <StatCard 
-          title="Topics Mastered" 
-          value={completedTopics.length.toString()} 
-          change="New" 
-          icon={BookOpen} 
-          color="text-violet-600" 
-          bgColor="bg-violet-50" 
-        />
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 mb-8 bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-2xl w-fit">
+        <button 
+          onClick={() => setActiveTab('overview')}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'overview' 
+              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+          }`}
+        >
+          Overview
+        </button>
+        <button 
+          onClick={() => setActiveTab('readiness')}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+            activeTab === 'readiness' 
+              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+          }`}
+        >
+          <Sparkles size={16} /> Interview Readiness
+        </button>
+        <button 
+          onClick={() => setActiveTab('coding')}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === 'coding' 
+              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+          }`}
+        >
+          Coding Activity
+        </button>
       </div>
 
-      {/* Coding Progress & Analytics */}
-      <CodingDashboard 
-        onStartTest={onStartTest} 
-        initialStats={platformStats}
-        initialUsernames={usernames}
-        onGoToSettings={onGoToSettings}
-        aptitudeScore={aptitudeScore}
-      />
+      <AnimatePresence mode="wait">
+        {activeTab === 'overview' && (
+          <motion.div
+            key="overview"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="space-y-8"
+          >
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <StatCard 
+                title="Total Solved" 
+                value={isLoadingStats ? "..." : totalSolved.toString()} 
+                change={platformStats.length > 0 ? `Across ${platformStats.length} platforms` : "Connect platforms"} 
+                icon={Trophy} 
+                color="text-amber-600" 
+                bgColor="bg-amber-50" 
+              />
+              <StatCard 
+                title="Study Hours" 
+                value={studyHours} 
+                change="Real-time" 
+                icon={Clock} 
+                color="text-blue-600" 
+                bgColor="bg-blue-50" 
+              />
+              <StatCard 
+                title="Tests Completed" 
+                value={history.length.toString()} 
+                change="+2" 
+                icon={ClipboardCheck} 
+                color="text-emerald-600" 
+                bgColor="bg-emerald-50" 
+              />
+              <StatCard 
+                title="Avg. Score" 
+                value={`${avgScore}%`} 
+                change="+5%" 
+                icon={BarChart3} 
+                color="text-indigo-600" 
+                bgColor="bg-indigo-50" 
+              />
+              <StatCard 
+                title="Topics Mastered" 
+                value={completedTopics.length.toString()} 
+                change="New" 
+                icon={BookOpen} 
+                color="text-violet-600" 
+                bgColor="bg-violet-50" 
+              />
+            </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Test Activity</h2>
-              <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View All</button>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-              {history.length > 0 ? (
-                history.map((item) => (
-                  <ActivityItem 
-                    key={item.id}
-                    title={item.title} 
-                    time={item.time} 
-                    score={item.score} 
-                    status={item.status} 
-                    onClick={() => onViewResult?.(item)}
-                  />
-                ))
-              ) : (
-                <div className="p-8 text-center text-slate-500 dark:text-slate-400">No recent test activity</div>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Completed Topics</h2>
-              <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View Progress</button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {completedTopics.length > 0 ? (
-                completedTopics.map((topic) => (
-                  <div key={topic.topicId} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 size={18} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{topic.topicName}</h4>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">{topic.category}</p>
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Recent Activity */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Test Activity</h2>
+                    <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View All</button>
                   </div>
-                ))
-              ) : (
-                <div className="col-span-full bg-white dark:bg-slate-900 p-8 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-500 dark:text-slate-400">
-                  Start learning to see your completed topics here!
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+                    {history.length > 0 ? (
+                      history.slice(0, 5).map((item) => (
+                        <ActivityItem 
+                          key={item.id}
+                          title={item.title} 
+                          time={item.time} 
+                          score={item.score} 
+                          status={item.status} 
+                          onClick={() => onViewResult?.(item)}
+                        />
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-slate-500 dark:text-slate-400">No recent test activity</div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
 
-        {/* Upcoming */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recommended for You</h2>
-          <div className="space-y-3">
-            <RecommendationCard 
-              title="Advanced React Patterns" 
-              description="Master hooks, HOCs and performance optimization."
-              tag="Course"
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Completed Topics</h2>
+                    <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View Progress</button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {completedTopics.length > 0 ? (
+                      completedTopics.slice(0, 4).map((topic) => (
+                        <div key={topic.topicId} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 size={18} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{topic.topicName}</h4>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">{topic.category}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-full bg-white dark:bg-slate-900 p-8 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-500 dark:text-slate-400">
+                        Start learning to see your completed topics here!
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recommended */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recommended for You</h2>
+                <div className="space-y-3">
+                  <RecommendationCard 
+                    title="Advanced React Patterns" 
+                    description="Master hooks, HOCs and performance optimization."
+                    tag="Course"
+                  />
+                  <RecommendationCard 
+                    title="Google Mock Interview" 
+                    description="Simulate a real technical interview with AI."
+                    tag="Interview"
+                  />
+                  <RecommendationCard 
+                    title="SQL Query Optimization" 
+                    description="Learn to write efficient database queries."
+                    tag="Quiz"
+                    onClick={() => onStartTest({ mode: 'sql-optimization' })}
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'readiness' && (
+          <motion.div
+            key="readiness"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <InterviewReadiness 
+              history={history}
+              completedTopics={completedTopics}
+              platformStats={platformStats}
+              aptitudeScore={aptitudeScore}
             />
-            <RecommendationCard 
-              title="Google Mock Interview" 
-              description="Simulate a real technical interview with AI."
-              tag="Interview"
+          </motion.div>
+        )}
+
+        {activeTab === 'coding' && (
+          <motion.div
+            key="coding"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <CodingDashboard 
+              onStartTest={onStartTest} 
+              initialStats={platformStats}
+              initialUsernames={usernames}
+              onGoToSettings={onGoToSettings}
+              aptitudeScore={aptitudeScore}
             />
-            <RecommendationCard 
-              title="SQL Query Optimization" 
-              description="Learn to write efficient database queries."
-              tag="Quiz"
-              onClick={() => onStartTest({ mode: 'sql-optimization' })}
-            />
-          </div>
-        </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
