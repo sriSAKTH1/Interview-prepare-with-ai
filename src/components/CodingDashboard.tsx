@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart3, 
   Code2, 
@@ -45,10 +45,13 @@ export function CodingDashboard({
   onGoToSettings?: () => void,
   aptitudeScore?: number
 }) {
-  const [usernames, setUsernames] = useState(() => {
+  const usernames = useMemo(() => {
+    if (initialUsernames && Object.values(initialUsernames).some(v => v !== '')) {
+      return initialUsernames;
+    }
     const saved = localStorage.getItem('coding_usernames');
     return saved ? JSON.parse(saved) : initialUsernames;
-  });
+  }, [initialUsernames]);
 
   const [platformStats, setPlatformStats] = useState<PlatformStats[]>(initialStats);
   const [isLoading, setIsLoading] = useState(false);
@@ -172,10 +175,6 @@ export function CodingDashboard({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleUsernameChange = (platform: string, value: string) => {
-    setUsernames(prev => ({ ...prev, [platform.toLowerCase()]: value }));
   };
 
   const [companySearch, setCompanySearch] = useState({ company: '', role: '' });

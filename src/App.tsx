@@ -4,13 +4,14 @@
  */
 
 import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
-import { Home, BookOpen, Bell, Search, User, ClipboardCheck, Zap, Moon, Sun, Settings as SettingsIcon, LogIn, LogOut, Code2 } from 'lucide-react';
+import { Home, BookOpen, Bell, Search, User, ClipboardCheck, Zap, Settings as SettingsIcon, LogIn, LogOut, Code2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dashboard } from './components/Dashboard';
 import { LearnSection } from './components/LearnSection';
 import { PrepareSection } from './components/PrepareSection';
 import { TestSection } from './components/TestSection';
 import { Settings } from './components/Settings';
+import { Roadmap } from './components/Roadmap';
 import Login from './components/Login';
 import { Section, LearnTopic, LearnMode, TestResult, CompletedTopic } from './types';
 import { 
@@ -114,8 +115,28 @@ export default function App() {
     return 'system';
   });
 
+  const [accentColor, setAccentColor] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('accentColor') || '#4f46e5';
+    }
+    return '#4f46e5';
+  });
+
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showTeamMessage, setShowTeamMessage] = useState(false);
+  const [showGreeting, setShowGreeting] = useState(false);
+  const [showRoadmap, setShowRoadmap] = useState(false);
+
+  useEffect(() => {
+    // Show greeting after a short delay
+    const timer = setTimeout(() => {
+      setShowGreeting(true);
+      // Hide after 5 seconds
+      setTimeout(() => setShowGreeting(false), 5000);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const updateTheme = () => {
@@ -145,11 +166,22 @@ export default function App() {
     }
   }, [themeMode]);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent-color', accentColor);
+    localStorage.setItem('accentColor', accentColor);
+  }, [accentColor]);
+
   const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
     if (userData?.careerPath) {
       setCareerPath(userData.careerPath);
+    }
+    if (userData?.accentColor) {
+      setAccentColor(userData.accentColor);
+    }
+    if (userData?.themeMode) {
+      setThemeMode(userData.themeMode);
     }
   }, [userData]);
 
@@ -373,7 +405,42 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className={`min-h-screen bg-[#f8f9fa] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300`}>
+      {/* Roadmap Overlay */}
+      <AnimatePresence>
+        {showRoadmap && (
+          <motion.div
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[100]"
+          >
+            <Roadmap onClose={() => setShowRoadmap(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Navigation */}
+      <AnimatePresence>
+        {showGreeting && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 20 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] pointer-events-none"
+          >
+            <div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/20 backdrop-blur-md">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <Zap size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold opacity-80 uppercase tracking-tighter">System Greeting</p>
+                <p className="text-sm font-bold">Good to see you again, {user.displayName?.split(' ')[0]}!</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-50 h-16">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -405,10 +472,56 @@ export default function App() {
             <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2 hidden md:block"></div>
             
             <div className="flex items-center gap-3">
-              <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors relative">
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
-              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowTeamMessage(!showTeamMessage)}
+                  className={`p-2 transition-all relative rounded-xl ${showTeamMessage ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                >
+                  <Bell size={20} />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>
+                </button>
+
+                <AnimatePresence>
+                  {showTeamMessage && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setShowTeamMessage(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95, x: -100 }}
+                        animate={{ opacity: 1, y: 0, scale: 1, x: -100 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95, x: -100 }}
+                        className="absolute top-full mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-20 overflow-hidden"
+                      >
+                        <div className="p-4 bg-indigo-600 text-white">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Zap size={16} />
+                            <span className="text-xs font-bold uppercase tracking-wider">Message from Team</span>
+                          </div>
+                          <h4 className="font-bold">Welcome to PrepMaster!</h4>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            Hello <span className="font-bold text-indigo-600 dark:text-indigo-400">{user.displayName?.split(' ')[0]}</span>! We're thrilled to have you here.
+                          </p>
+                          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <p className="text-xs italic text-slate-500 dark:text-slate-400">
+                              "Success is not final, failure is not fatal: it is the courage to continue that counts."
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => setShowTeamMessage(false)}
+                            className="w-full py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity"
+                          >
+                            Got it, thanks!
+                          </button>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
               
               <div className="flex items-center gap-3">
                 <span className="hidden lg:block text-sm font-bold text-slate-600 dark:text-slate-400 mr-1">
@@ -463,19 +576,6 @@ export default function App() {
                             </div>
                           )}
 
-                          <button 
-                            onClick={() => setThemeMode(isDarkMode ? 'light' : 'dark')}
-                            className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              {isDarkMode ? <Sun size={18} className="text-amber-500" /> : <Moon size={18} className="text-indigo-600" />}
-                              <span className="text-sm font-medium dark:text-slate-200">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
-                            </div>
-                            <div className={`w-10 h-5 rounded-full transition-colors relative ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                              <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isDarkMode ? 'left-6' : 'left-1'}`} />
-                            </div>
-                          </button>
-                          
                           <button 
                             onClick={() => {
                               setActiveSection('settings');
@@ -533,11 +633,13 @@ export default function App() {
                 setCareerPath={setCareerPath}
                 user={user}
                 userData={userData}
+                usernames={userData?.coding_usernames}
                 onViewResult={(result) => {
                   setViewingResult(result);
                   setActiveSection('test');
                 }}
                 onGoToSettings={() => setActiveSection('settings')}
+                onOpenRoadmap={() => setShowRoadmap(true)}
               />
             </motion.div>
           )}
@@ -573,7 +675,7 @@ export default function App() {
               transition={{ duration: 0.2 }}
               className="h-[calc(100vh-64px)]"
             >
-              <PrepareSection careerPath={careerPath} onStartTest={startTest} />
+              <PrepareSection careerPath={careerPath} onStartTest={startTest} onOpenRoadmap={() => setShowRoadmap(true)} />
             </motion.div>
           )}
 
@@ -612,6 +714,8 @@ export default function App() {
                 setCareerPath={setCareerPath}
                 themeMode={themeMode}
                 setThemeMode={setThemeMode}
+                accentColor={accentColor}
+                setAccentColor={setAccentColor}
                 onClose={() => setActiveSection('home')}
               />
             </motion.div>

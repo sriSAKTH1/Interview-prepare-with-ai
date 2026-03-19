@@ -39,9 +39,10 @@ import ReactMarkdown from 'react-markdown';
 
 type PrepareMode = 'overview' | 'role-plan' | 'dsa-plan' | 'roadmap' | 'resume-questions' | 'company-exam' | 'questions-approach';
 
-export function PrepareSection({ careerPath, onStartTest }: { 
+export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: { 
   careerPath?: string,
-  onStartTest?: (config: any) => void 
+  onStartTest?: (config: any) => void,
+  onOpenRoadmap?: () => void
 }) {
   const [mode, setMode] = useState<PrepareMode>('overview');
   const [loading, setLoading] = useState(false);
@@ -573,6 +574,19 @@ export function PrepareSection({ careerPath, onStartTest }: {
               <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
                 Get Started <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </div>
+
+              {option.id === 'roadmap' && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenRoadmap?.();
+                  }}
+                  className="mt-4 w-full py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Map size={14} />
+                  View Visual Roadmap
+                </button>
+              )}
 
               {/* Decorative background element */}
               <div className={`absolute -bottom-12 -right-12 w-32 h-32 ${option.color} opacity-[0.03] rounded-full`} />

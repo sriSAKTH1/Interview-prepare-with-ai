@@ -91,6 +91,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedCats, setExpandedCats] = useState<string[]>(['DATA STRUCTURES', 'ALGORITHMS', 'Linear', 'Non-Linear', 'Database Mastery']);
   const [showJourneyModal, setShowJourneyModal] = useState(false);
+  const [showRoadmap, setShowRoadmap] = useState(false);
 
   const isCompleted = completedTopics?.some(t => t.topicId === topic);
 
@@ -346,15 +347,33 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             onClick={() => {
               setTopic('overview');
               setMode('overview');
+              setShowRoadmap(false);
             }}
             className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all ${
-              topic === 'overview' 
+              topic === 'overview' && !showRoadmap
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
                 : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             <Layout size={18} className="shrink-0" />
             {isSidebarOpen && <span className="font-semibold text-sm truncate">Overview</span>}
+          </button>
+
+          {/* Learning Roadmap Button */}
+          <button
+            onClick={() => {
+              setShowRoadmap(true);
+              setTopic('overview');
+              setMode('overview');
+            }}
+            className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all ${
+              showRoadmap 
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
+            }`}
+          >
+            <Map size={18} className="shrink-0" />
+            {isSidebarOpen && <span className="font-semibold text-sm truncate">Learning Roadmap</span>}
           </button>
 
           {sidebarCategories.map((category, catIdx) => (
@@ -386,7 +405,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                         }
                       }}
                       className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all group ${
-                        !item.subItems && topic === item.id 
+                        !item.subItems && topic === item.id && !showRoadmap
                           ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
                           : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
                       }`}
@@ -424,18 +443,18 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
                               setMode('overview');
                             }}
                             className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all relative ${
-                              topic === sub.id 
+                              topic === sub.id && !showRoadmap
                                 ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/20' 
                                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-800'
                             }`}
                           >
-                            {topic === sub.id && (
+                            {topic === sub.id && !showRoadmap && (
                               <motion.div 
                                 layoutId="activeSub"
                                 className="absolute left-[-17px] w-1 h-4 bg-indigo-600 dark:bg-indigo-500 rounded-full"
                               />
                             )}
-                            <sub.icon size={16} className={`shrink-0 ${topic === sub.id ? 'opacity-100' : 'opacity-50'}`} />
+                            <sub.icon size={16} className={`shrink-0 ${topic === sub.id && !showRoadmap ? 'opacity-100' : 'opacity-50'}`} />
                             <span className="text-sm truncate flex-1">{sub.label}</span>
                             {completedTopics.some(t => t.topicId === sub.id) && (
                               <CheckCircle2 size={14} className="text-emerald-500" />
@@ -485,7 +504,24 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
       {/* Content Area */}
       <div className="flex-1 overflow-hidden bg-white dark:bg-slate-950">
         <AnimatePresence mode="wait">
-          {mode === 'overview' ? (
+          {showRoadmap ? (
+            <motion.div
+              key="roadmap"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              className="h-full overflow-y-auto"
+            >
+              <CurriculumRoadmap 
+                onSelectTopic={(id) => {
+                  setTopic(id as LearnTopic);
+                  setMode('overview');
+                  setShowRoadmap(false);
+                }}
+                completedTopics={completedTopics?.map(t => t.topicId) || []}
+              />
+            </motion.div>
+          ) : mode === 'overview' ? (
             <motion.div
               key={topic}
               initial={{ opacity: 0, x: 20 }}
@@ -496,7 +532,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             >
               {topic === 'overview' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <LearnOverview setMode={setMode} onStartJourney={() => setShowJourneyModal(true)} />
+                  <LearnOverview setMode={setMode} onStartJourney={() => setShowRoadmap(true)} />
                 </div>
               )}
               {topic === 'questions-approach' && (
@@ -2420,6 +2456,152 @@ function ReviewItem({ topic, status, level }: any) {
       }`}>
         {level}
       </span>
+    </div>
+  );
+}
+
+function CurriculumRoadmap({ onSelectTopic, completedTopics }: { onSelectTopic: (id: string) => void, completedTopics: string[] }) {
+  const roadmapItems = [
+    { id: 'array', label: 'ARRAY', subItems: [] },
+    { id: 'string', label: 'STRING', subItems: [] },
+    { id: 'stack-queue', label: 'STACK ↔ QUEUE', subItems: [{ id: 'stack', label: 'STACK' }, { id: 'queue', label: 'QUEUE' }] },
+    { id: 'linked-list', label: 'LINKED LIST', subItems: [] },
+    { id: 'tree', label: 'TREE', subItems: [] },
+    { id: 'graph', label: 'GRAPH', subItems: [] },
+    { 
+      id: 'searching', 
+      label: 'SEARCHING', 
+      subItems: [
+        { id: 'linear-search', label: 'Linear Search' },
+        { id: 'binary-search', label: 'Binary Search (Sorted Array)' }
+      ] 
+    },
+    { 
+      id: 'sorting', 
+      label: 'SORTING', 
+      subItems: [
+        { id: 'bubble-sort', label: 'Basic (Bubble, Selection, Insertion)' },
+        { id: 'merge-sort', label: 'Advanced (Merge, Quick, Heap, Bucket)' }
+      ] 
+    },
+    { 
+      id: 'graph-algorithms', 
+      label: 'GRAPH ALGORITHMS', 
+      subItems: [
+        { id: 'bfs', label: 'BFS (Queue)' },
+        { id: 'dfs', label: 'DFS (Stack/Recursion)' }
+      ] 
+    },
+  ];
+
+  return (
+    <div className="p-8 max-w-6xl mx-auto">
+      <div className="text-center mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="inline-block px-4 py-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black uppercase tracking-widest mb-4"
+        >
+          Learning Path
+        </motion.div>
+        <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">DSA Curriculum Map</h2>
+        <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg">
+          Master the core concepts of Data Structures and Algorithms through this structured visual journey.
+        </p>
+      </div>
+
+      <div className="relative">
+        <div className="space-y-12 relative">
+          {roadmapItems.map((item, index) => {
+            const isCompleted = completedTopics.includes(item.id) || 
+              (item.subItems.length > 0 && item.subItems.every(s => completedTopics.includes(typeof s === 'string' ? s : s.id)));
+
+            return (
+              <div key={item.id} className="flex flex-col items-center">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  whileHover={{ scale: 1.02 }}
+                  className={`w-full max-w-2xl p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer relative overflow-hidden group ${
+                    isCompleted 
+                      ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' 
+                      : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-500 shadow-xl shadow-slate-200/50 dark:shadow-none'
+                  }`}
+                  onClick={() => {
+                    const firstSubId = item.subItems.length > 0 
+                      ? (typeof item.subItems[0] === 'string' ? item.subItems[0] : item.subItems[0].id)
+                      : item.id;
+                    onSelectTopic(firstSubId);
+                  }}
+                >
+                  {/* Background Decoration */}
+                  <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-3xl opacity-20 transition-colors ${isCompleted ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
+
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg ${
+                        isCompleted ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <span className={`text-xs font-black uppercase tracking-widest ${isCompleted ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                        Phase {index + 1}
+                      </span>
+                    </div>
+                    {isCompleted && (
+                      <div className="flex items-center gap-2 px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                        <CheckCircle2 size={14} /> Completed
+                      </div>
+                    )}
+                  </div>
+
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {item.label}
+                  </h3>
+                  
+                  {item.subItems.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-6">
+                      {item.subItems.map((sub: any) => {
+                        const subId = typeof sub === 'string' ? sub : sub.id;
+                        const subLabel = typeof sub === 'string' ? sub : sub.label;
+                        const isSubCompleted = completedTopics.includes(subId);
+                        
+                        return (
+                          <div 
+                            key={subId} 
+                            className={`px-4 py-2 rounded-2xl text-[11px] font-bold uppercase tracking-tight flex items-center gap-2 transition-colors ${
+                              isSubCompleted
+                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/20 group-hover:text-indigo-600'
+                            }`}
+                          >
+                            {isSubCompleted && <Check size={12} />}
+                            {subLabel}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+
+                {/* Connector Arrow */}
+                {index < roadmapItems.length - 1 && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    whileInView={{ opacity: 1, height: 48 }}
+                    viewport={{ once: true }}
+                    className="flex flex-col items-center py-4"
+                  >
+                    <div className="w-1 h-12 bg-gradient-to-b from-indigo-500 to-indigo-300 dark:from-indigo-600 dark:to-indigo-800 rounded-full" />
+                    <ChevronDown className="text-indigo-400 -mt-2" size={24} />
+                  </motion.div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

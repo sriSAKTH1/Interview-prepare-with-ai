@@ -16,6 +16,8 @@ import {
   limit,
   getDocFromServer
 } from 'firebase/firestore';
+
+export { doc, setDoc, collection };
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase

@@ -155,32 +155,36 @@ export async function fetchHackerRankStats(username: string): Promise<PlatformSt
 }
 
 export async function fetchAllPlatformStats(usernames: { leetcode?: string, codeforces?: string, codechef?: string, github?: string, hackerrank?: string }) {
-  const results: PlatformStats[] = [];
+  const promises: Promise<PlatformStats | null>[] = [];
   
   if (usernames.leetcode) {
-    const stats = await fetchLeetCodeStats(usernames.leetcode);
-    if (stats) results.push(stats);
+    promises.push(fetchLeetCodeStats(usernames.leetcode));
   }
   
   if (usernames.codeforces) {
-    const stats = await fetchCodeforcesStats(usernames.codeforces);
-    if (stats) results.push(stats);
+    promises.push(fetchCodeforcesStats(usernames.codeforces));
   }
 
   if (usernames.codechef) {
-    const stats = await fetchCodeChefStats(usernames.codechef);
-    if (stats) results.push(stats);
+    promises.push(fetchCodeChefStats(usernames.codechef));
   }
 
   if (usernames.github) {
-    const stats = await fetchGitHubStats(usernames.github);
-    if (stats) results.push(stats);
+    promises.push(fetchGitHubStats(usernames.github));
   }
 
   if (usernames.hackerrank) {
-    const stats = await fetchHackerRankStats(usernames.hackerrank);
-    if (stats) results.push(stats);
+    promises.push(fetchHackerRankStats(usernames.hackerrank));
   }
 
-  return results;
+  const results = await Promise.allSettled(promises);
+  const stats: PlatformStats[] = [];
+  
+  results.forEach((result) => {
+    if (result.status === 'fulfilled' && result.value) {
+      stats.push(result.value);
+    }
+  });
+
+  return stats;
 }

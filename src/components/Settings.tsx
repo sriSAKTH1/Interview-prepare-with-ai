@@ -14,13 +14,12 @@ import {
   Github,
   Globe,
   Mail,
-  Smartphone,
-  Moon,
-  Sun,
   Trash2,
   Download,
   AlertCircle,
-  Zap
+  Zap,
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 
 type SettingsTab = 
@@ -33,19 +32,32 @@ type SettingsTab =
   | 'security' 
   | 'privacy';
 
-export function Settings({ user, userData, careerPath, setCareerPath, themeMode, setThemeMode, onClose }: {
+export function Settings({ user, userData, careerPath, setCareerPath, themeMode, setThemeMode, accentColor, setAccentColor, onClose }: {
   user: any;
   userData: any;
   careerPath: string;
   setCareerPath: (path: string) => void;
   themeMode: 'light' | 'dark' | 'system';
   setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
+  accentColor: string;
+  setAccentColor: (color: string) => void;
   onClose?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [connectingPlatform, setConnectingPlatform] = useState<any>(null);
   const [platformUsername, setPlatformUsername] = useState('');
+
+  // Local state for all settings to be saved at once
+  const [localDisplayName, setLocalDisplayName] = useState(userData?.displayName || user?.displayName || '');
+  const [localBio, setLocalBio] = useState(userData?.bio || '');
+  const [localCareerPath, setLocalCareerPath] = useState(careerPath);
+  const [localThemeMode, setLocalThemeMode] = useState(themeMode);
+  const [localAccentColor, setLocalAccentColor] = useState(accentColor);
+  const [localLanguage, setLocalLanguage] = useState(userData?.preferredLanguage || 'JavaScript / TypeScript');
+  const [localDailyGoal, setLocalDailyGoal] = useState(userData?.dailyGoal || 60);
+  
   const [platforms, setPlatforms] = useState(() => {
     const saved = localStorage.getItem('coding_usernames');
     const usernames = saved ? JSON.parse(saved) : { leetcode: '', github: '', codeforces: '', codechef: '', hackerrank: '' };
@@ -58,12 +70,94 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
     ];
   });
 
-  const handleSave = () => {
+  const [notificationPrefs, setNotificationPrefs] = useState(() => {
+    const saved = localStorage.getItem('notification_prefs');
+    return saved ? JSON.parse(saved) : {
+      studyReminders: { email: true, inApp: true },
+      newChallenges: { email: false, inApp: true },
+      weeklyProgress: { email: true, inApp: false },
+      platformUpdates: { email: false, inApp: true },
+    };
+  });
+
+  const [progressPrefs, setProgressPrefs] = useState(() => {
+    const saved = localStorage.getItem('progress_prefs');
+    return saved ? JSON.parse(saved) : {
+      autoSyncFrequency: 'Every hour',
+      publicProfile: true
+    };
+  });
+
+  const [privacyPrefs, setPrivacyPrefs] = useState(() => {
+    const saved = localStorage.getItem('privacy_prefs');
+    return saved ? JSON.parse(saved) : {
+      personalizedAds: false,
+      shareUsageData: true,
+      showEmail: false
+    };
+  });
+
+  const handleSave = async () => {
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      if (onClose) onClose();
-    }, 1500);
+    setSaveStatus('saving');
+    
+    try {
+      // 1. Save Platform Usernames
+      const usernames: any = {};
+      platforms.forEach(p => {
+        usernames[p.name.toLowerCase()] = p.connected ? p.username : '';
+      });
+      localStorage.setItem('coding_usernames', JSON.stringify(usernames));
+
+      // 2. Save Notification Prefs
+      localStorage.setItem('notification_prefs', JSON.stringify(notificationPrefs));
+
+      // 3. Save Progress Prefs
+      localStorage.setItem('progress_prefs', JSON.stringify(progressPrefs));
+
+      // 4. Save Privacy Prefs
+      localStorage.setItem('privacy_prefs', JSON.stringify(privacyPrefs));
+
+      // 5. Update Parent State (Theme & Career Path)
+      setCareerPath(localCareerPath);
+      setThemeMode(localThemeMode);
+      setAccentColor(localAccentColor);
+
+      // 6. Sync to Firestore
+      if (user) {
+        const { doc, db, setDoc } = await import('../firebase');
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, {
+          displayName: localDisplayName,
+          bio: localBio,
+          careerPath: localCareerPath,
+          preferredLanguage: localLanguage,
+          dailyGoal: localDailyGoal,
+          accentColor: localAccentColor,
+          themeMode: localThemeMode,
+          coding_usernames: usernames,
+          notificationPrefs,
+          progressPrefs,
+          privacyPrefs,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+
+      // Success feedback
+      setSaveStatus('success');
+      setTimeout(() => {
+        setIsSaving(false);
+        setSaveStatus('idle');
+        if (onClose) onClose();
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      setSaveStatus('error');
+      setTimeout(() => {
+        setIsSaving(false);
+        setSaveStatus('idle');
+      }, 3000);
+    }
   };
 
   const handleConnect = (platform: any) => {
@@ -84,35 +178,13 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
         : p
     );
     setPlatforms(newPlatforms);
-
-    // Sync to localStorage for Dashboard
-    const usernames: any = {};
-    newPlatforms.forEach(p => {
-      usernames[p.name.toLowerCase()] = p.connected ? p.username : '';
-    });
-    localStorage.setItem('coding_usernames', JSON.stringify(usernames));
-
     setConnectingPlatform(null);
   };
 
   const disconnectPlatform = (name: string) => {
     const newPlatforms = platforms.map(p => p.name === name ? { ...p, connected: false, username: '' } : p);
     setPlatforms(newPlatforms);
-
-    // Sync to localStorage
-    const usernames: any = {};
-    newPlatforms.forEach(p => {
-      usernames[p.name.toLowerCase()] = p.connected ? p.username : '';
-    });
-    localStorage.setItem('coding_usernames', JSON.stringify(usernames));
   };
-
-  const [notificationPrefs, setNotificationPrefs] = useState({
-    studyReminders: { email: true, inApp: true },
-    newChallenges: { email: false, inApp: true },
-    weeklyProgress: { email: true, inApp: false },
-    platformUpdates: { email: false, inApp: true },
-  });
 
   const handleTogglePref = (type: string, channel: 'email' | 'inApp') => {
     setNotificationPrefs(prev => ({
@@ -259,7 +331,8 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                       <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Display Name</label>
                       <input 
                         type="text" 
-                        defaultValue={user?.displayName}
+                        value={localDisplayName}
+                        onChange={(e) => setLocalDisplayName(e.target.value)}
                         className="w-full px-5 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
                       />
                     </div>
@@ -276,6 +349,8 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                       <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Bio</label>
                       <textarea 
                         rows={3}
+                        value={localBio}
+                        onChange={(e) => setLocalBio(e.target.value)}
                         placeholder="Tell us about your coding journey..."
                         className="w-full px-5 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
                       />
@@ -295,9 +370,9 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                         {['Frontend Developer', 'Backend Developer', 'Fullstack Developer', 'Data Scientist', 'Mobile Developer', 'DevOps Engineer'].map((path) => (
                           <button
                             key={path}
-                            onClick={() => setCareerPath(path)}
+                            onClick={() => setLocalCareerPath(path)}
                             className={`px-5 py-4 rounded-2xl text-left font-bold transition-all border-2 ${
-                              careerPath === path
+                              localCareerPath === path
                                 ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
                                 : 'border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700'
                             }`}
@@ -310,7 +385,11 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
 
                     <div className="space-y-4">
                       <h4 className="font-bold text-slate-900 dark:text-white">Preferred Language</h4>
-                      <select className="w-full px-5 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+                      <select 
+                        value={localLanguage}
+                        onChange={(e) => setLocalLanguage(e.target.value)}
+                        className="w-full px-5 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                      >
                         <option>JavaScript / TypeScript</option>
                         <option>Python</option>
                         <option>Java</option>
@@ -325,7 +404,12 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                         {[15, 30, 60, 120].map((mins) => (
                           <button
                             key={mins}
-                            className="flex-1 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all"
+                            onClick={() => setLocalDailyGoal(mins)}
+                            className={`flex-1 py-3 rounded-xl font-bold transition-all ${
+                              localDailyGoal === mins
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600'
+                            }`}
                           >
                             {mins}m
                           </button>
@@ -460,71 +544,31 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                   
                   <div className="space-y-8">
                     <div className="space-y-4">
-                      <h4 className="font-bold text-slate-900 dark:text-white">Appearance</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <button 
-                          onClick={() => setThemeMode('light')}
-                          className={`p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all ${
-                            themeMode === 'light' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-800'
-                          }`}
-                        >
-                          <Sun size={24} className={themeMode === 'light' ? 'text-indigo-600' : 'text-slate-400'} />
-                          <span className={`font-bold ${themeMode === 'light' ? 'text-indigo-600' : 'text-slate-500'}`}>Light</span>
-                        </button>
-                        <button 
-                          onClick={() => setThemeMode('dark')}
-                          className={`p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all ${
-                            themeMode === 'dark' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-800'
-                          }`}
-                        >
-                          <Moon size={24} className={themeMode === 'dark' ? 'text-indigo-600' : 'text-slate-400'} />
-                          <span className={`font-bold ${themeMode === 'dark' ? 'text-indigo-600' : 'text-slate-500'}`}>Dark</span>
-                        </button>
-                        <button 
-                          onClick={() => setThemeMode('system')}
-                          className={`p-6 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all ${
-                            themeMode === 'system' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-slate-800'
-                          }`}
-                        >
-                          <Smartphone size={24} className={themeMode === 'system' ? 'text-indigo-600' : 'text-slate-400'} />
-                          <span className={`font-bold ${themeMode === 'system' ? 'text-indigo-600' : 'text-slate-500'}`}>System</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl">
-                        <div>
-                          <h4 className="font-bold text-slate-900 dark:text-white">Quick Toggle</h4>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">Instantly switch between light and dark.</p>
-                        </div>
-                        <button 
-                          onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
-                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none ${
-                            themeMode === 'dark' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
-                          }`}
-                        >
-                          <div
-                            className={`flex h-6 w-6 transform items-center justify-center rounded-full bg-white transition-transform ${
-                              themeMode === 'dark' ? 'translate-x-7' : 'translate-x-1'
-                            }`}
-                          >
-                            {themeMode === 'dark' ? <Moon size={12} className="text-indigo-600" /> : <Sun size={12} className="text-amber-500" />}
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
                       <h4 className="font-bold text-slate-900 dark:text-white">Accent Color</h4>
-                      <div className="flex gap-4">
-                        {['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#ec4899'].map((color) => (
+                      <div className="flex flex-wrap gap-4">
+                        {['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#8b5cf6'].map((color) => (
                           <button 
                             key={color}
-                            className="w-10 h-10 rounded-full border-4 border-white dark:border-slate-900 shadow-sm"
+                            onClick={() => setLocalAccentColor(color)}
+                            className={`w-12 h-12 rounded-full border-4 shadow-sm transition-all transform hover:scale-110 ${
+                              localAccentColor === color ? 'border-indigo-600 scale-110' : 'border-white dark:border-slate-900'
+                            }`}
                             style={{ backgroundColor: color }}
-                          />
+                          >
+                            {localAccentColor === color && (
+                              <CheckCircle2 size={20} className="text-white mx-auto drop-shadow-md" />
+                            )}
+                          </button>
                         ))}
+                        <div className="flex items-center gap-3 ml-2">
+                          <input 
+                            type="color" 
+                            value={localAccentColor}
+                            onChange={(e) => setLocalAccentColor(e.target.value)}
+                            className="w-12 h-12 rounded-full border-4 border-white dark:border-slate-900 shadow-sm cursor-pointer overflow-hidden"
+                          />
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Custom</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -539,7 +583,11 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                     <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl space-y-4">
                       <div className="flex items-center justify-between">
                         <h4 className="font-bold text-slate-900 dark:text-white">Auto-Sync Frequency</h4>
-                        <select className="bg-white dark:bg-slate-900 border-none rounded-xl text-sm font-bold px-4 py-2">
+                        <select 
+                          value={progressPrefs.autoSyncFrequency}
+                          onChange={(e) => setProgressPrefs(prev => ({ ...prev, autoSyncFrequency: e.target.value }))}
+                          className="bg-white dark:bg-slate-900 border-none rounded-xl text-sm font-bold px-4 py-2"
+                        >
                           <option>Every 15 mins</option>
                           <option>Every hour</option>
                           <option>Daily</option>
@@ -554,7 +602,12 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                         <p className="text-sm text-slate-500 dark:text-slate-400">Allow others to see your progress and rank.</p>
                       </div>
                       <div className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" />
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={progressPrefs.publicProfile}
+                          onChange={() => setProgressPrefs(prev => ({ ...prev, publicProfile: !prev.publicProfile }))}
+                        />
                         <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                       </div>
                     </div>
@@ -611,14 +664,19 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                     <div className="space-y-4">
                       <h4 className="font-bold text-slate-900 dark:text-white">Privacy Settings</h4>
                       {[
-                        'Allow personalized ads',
-                        'Share usage data for app improvement',
-                        'Show my email to other users'
+                        { id: 'personalizedAds', label: 'Allow personalized ads' },
+                        { id: 'shareUsageData', label: 'Share usage data for app improvement' },
+                        { id: 'showEmail', label: 'Show my email to other users' }
                       ].map((item) => (
-                        <div key={item} className="flex items-center justify-between">
-                          <span className="text-sm text-slate-600 dark:text-slate-400">{item}</span>
+                        <div key={item.id} className="flex items-center justify-between">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">{item.label}</span>
                           <div className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" className="sr-only peer" />
+                            <input 
+                              type="checkbox" 
+                              className="sr-only peer" 
+                              checked={privacyPrefs[item.id as keyof typeof privacyPrefs]}
+                              onChange={() => setPrivacyPrefs(prev => ({ ...prev, [item.id]: !prev[item.id as keyof typeof privacyPrefs] }))}
+                            />
                             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                           </div>
                         </div>
@@ -634,20 +692,32 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                 onClick={handleSave}
                 disabled={isSaving}
                 className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all shadow-lg ${
-                  isSaving 
+                  saveStatus === 'success' 
                     ? 'bg-emerald-500 text-white' 
+                    : saveStatus === 'error'
+                    ? 'bg-rose-500 text-white'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25'
-                }`}
+                } ${isSaving ? 'opacity-80 cursor-not-allowed' : ''}`}
               >
-                {isSaving ? (
+                {saveStatus === 'saving' ? (
                   <>
                     <motion.div
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 0.5, repeat: Infinity }}
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     >
-                      <Save size={20} />
+                      <RefreshCw size={20} />
                     </motion.div>
+                    Saving...
+                  </>
+                ) : saveStatus === 'success' ? (
+                  <>
+                    <CheckCircle2 size={20} />
                     Saved!
+                  </>
+                ) : saveStatus === 'error' ? (
+                  <>
+                    <AlertCircle size={20} />
+                    Failed to Save
                   </>
                 ) : (
                   <>

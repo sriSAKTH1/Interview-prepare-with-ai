@@ -32,57 +32,88 @@ export function InterviewReadiness({
   // Calculate scores
   const calculateReadiness = (): InterviewReadinessScore => {
     // 1. DSA Practice (0-100)
-    // Based on completed topics and mock tests
+    // Based on completed topics and DSA tests
     const dsaTopicsCount = completedTopics.length;
     const dsaTests = history.filter(h => h.title.toLowerCase().includes('dsa') || h.title.toLowerCase().includes('algorithm'));
     const avgDsaScore = dsaTests.length > 0 
       ? dsaTests.reduce((acc, curr) => acc + (curr.correct / curr.total) * 100, 0) / dsaTests.length 
       : 0;
-    const dsaPractice = Math.min(100, (dsaTopicsCount * 5) + (avgDsaScore * 0.5));
+    
+    // Topics count weight (max 40 points for 20 topics)
+    const topicPoints = Math.min(40, dsaTopicsCount * 2);
+    // Test performance weight (max 60 points based on avg score and count)
+    const testPoints = Math.min(60, (avgDsaScore * 0.5) + (dsaTests.length * 2));
+    const dsaPractice = Math.min(100, topicPoints + testPoints);
 
     // 2. Aptitude (0-100)
-    // Directly from aptitudeScore (which is already 0-100)
     const aptitude = Math.min(100, aptitudeScore);
 
     // 3. Coding Activity (0-100)
     // Based on platform stats (LeetCode, etc.)
     const totalSolved = platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0);
-    const codingActivity = Math.min(100, (totalSolved / 2)); // 200 solved = 100 score
+    // Logarithmic-like scale: 50 solved = 40 pts, 150 solved = 70 pts, 300+ solved = 100 pts
+    const codingActivity = Math.min(100, Math.sqrt(totalSolved) * 5.8); 
 
     // 4. Mock Interview (0-100)
-    // Based on mock interview history
     const mockInterviews = history.filter(h => h.title.toLowerCase().includes('mock') || h.title.toLowerCase().includes('interview') || h.title.toLowerCase().includes('company'));
-    
-    // Calculate average interviewScore for those that have it
     const interviewsWithScore = mockInterviews.filter(h => h.interviewScore !== undefined && h.interviewScore !== null);
     const avgInterviewScore = interviewsWithScore.length > 0
       ? interviewsWithScore.reduce((acc, curr) => acc + (curr.interviewScore || 0), 0) / interviewsWithScore.length
       : 0;
 
-    // Fallback to MCQ score if no interviewScore is available
     const avgMockMcqScore = mockInterviews.length > 0
       ? mockInterviews.reduce((acc, curr) => acc + (curr.correct / curr.total) * 100, 0) / mockInterviews.length
       : 0;
 
     let mockInterview = 0;
     if (interviewsWithScore.length > 0) {
-      // If we have AI-evaluated scores, they carry more weight
-      mockInterview = Math.min(100, (avgInterviewScore * 0.8) + (mockInterviews.length * 5));
+      mockInterview = Math.min(100, (avgInterviewScore * 0.7) + (mockInterviews.length * 6));
     } else {
-      // Fallback to old calculation
-      mockInterview = Math.min(100, (mockInterviews.length * 10) + (avgMockMcqScore * 0.5));
+      mockInterview = Math.min(100, (mockInterviews.length * 8) + (avgMockMcqScore * 0.4));
     }
 
-    // Overall Score
-    const overall = Math.round((dsaPractice + aptitude + codingActivity + mockInterview) / 4);
+    // Overall Score (Weighted)
+    const overall = Math.round(
+      (dsaPractice * 0.35) + 
+      (aptitude * 0.15) + 
+      (codingActivity * 0.25) + 
+      (mockInterview * 0.25)
+    );
 
-    // Suggestions
+    // Dynamic Suggestions
     const suggestions = [];
-    if (dsaPractice < 60) suggestions.push("Focus on completing more DSA topics in the Learn section.");
-    if (aptitude < 70) suggestions.push("Practice more Aptitude tests to improve your speed and accuracy.");
-    if (codingActivity < 40) suggestions.push("Increase your daily coding activity on platforms like LeetCode.");
-    if (mockInterview < 50) suggestions.push("Schedule more Mock Interviews to build confidence and communication skills.");
-    if (overall > 80) suggestions.push("You're in great shape! Keep refining your edge cases.");
+    
+    if (dsaPractice < 50) {
+      suggestions.push("Your DSA foundation needs work. Complete at least 10 more topics in the Learn section.");
+    } else if (dsaPractice < 80) {
+      suggestions.push("Good DSA progress. Try solving more 'Hard' difficulty problems to push your limits.");
+    }
+
+    if (aptitude < 70) {
+      suggestions.push("Aptitude is often the first filter in interviews. Aim for a consistent 85%+ in practice tests.");
+    }
+
+    if (codingActivity < 50) {
+      suggestions.push(`You've solved ${totalSolved} problems. Aim for 150+ to significantly boost your problem-solving speed.`);
+    } else if (codingActivity < 90) {
+      suggestions.push("Great coding consistency! Focus on participating in weekly contests to improve under pressure.");
+    }
+
+    if (mockInterview < 60) {
+      suggestions.push("Technical communication is key. Use the Mock Interview feature to practice explaining your logic aloud.");
+    }
+
+    if (overall > 85) {
+      suggestions.push("Exceptional readiness! You're likely ready for Tier-1 product companies. Focus on system design now.");
+    } else if (overall > 70) {
+      suggestions.push("You're reaching the 'Interview Ready' zone. Start applying for roles while continuing your daily practice.");
+    }
+
+    // Ensure at least 3 suggestions
+    if (suggestions.length < 3) {
+      suggestions.push("Keep a consistent daily streak to maintain your problem-solving momentum.");
+      suggestions.push("Review your past test mistakes to identify and bridge knowledge gaps.");
+    }
 
     return {
       overall,
@@ -90,7 +121,7 @@ export function InterviewReadiness({
       aptitude: Math.round(aptitude),
       codingActivity: Math.round(codingActivity),
       mockInterview: Math.round(mockInterview),
-      suggestions
+      suggestions: suggestions.slice(0, 5) // Max 5 suggestions
     };
   };
 

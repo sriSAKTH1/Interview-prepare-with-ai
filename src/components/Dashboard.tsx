@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen, Edit2, X, Trophy, Globe, Github, Activity } from 'lucide-react';
+import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen, Edit2, X, Trophy, Globe, Github, Activity, MapPin } from 'lucide-react';
 import { TestResult, CompletedTopic } from '../types';
 import { CodingDashboard } from './CodingDashboard';
 import { InterviewReadiness } from './InterviewReadiness';
@@ -15,7 +15,9 @@ export function Dashboard({
   user,
   userData,
   onViewResult,
-  onGoToSettings
+  onGoToSettings,
+  onOpenRoadmap,
+  usernames: propUsernames
 }: { 
   history: TestResult[], 
   onStartTest: (config: any) => void,
@@ -25,7 +27,9 @@ export function Dashboard({
   user?: any,
   userData?: any,
   onViewResult?: (result: TestResult) => void,
-  onGoToSettings?: () => void
+  onGoToSettings?: () => void,
+  onOpenRoadmap?: () => void,
+  usernames?: any
 }) {
   const [isChangingPath, setIsChangingPath] = useState(false);
   const [platformStats, setPlatformStats] = useState<PlatformStats[]>([]);
@@ -38,6 +42,7 @@ export function Dashboard({
   const [activeTab, setActiveTab] = useState<'overview' | 'readiness' | 'coding'>('overview');
 
   const usernames = useMemo(() => {
+    if (propUsernames) return propUsernames;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('coding_usernames');
       return saved ? JSON.parse(saved) : {
@@ -49,7 +54,7 @@ export function Dashboard({
       };
     }
     return { leetcode: '', codeforces: '', codechef: '', hackerrank: '', github: '' };
-  }, []);
+  }, [propUsernames]);
 
   useEffect(() => {
     const hasUsernames = Object.values(usernames).some(v => v !== '');
@@ -152,6 +157,13 @@ export function Dashboard({
           </div>
         </div>
         <div className="flex gap-3">
+          <button 
+            onClick={onOpenRoadmap}
+            className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm"
+          >
+            <MapPin size={16} />
+            View Roadmap
+          </button>
           <button className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             View Analytics
           </button>

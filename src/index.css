@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-indigo-50: oklch(from var(--accent-color) 0.97 0.01 h);
+  --color-indigo-100: oklch(from var(--accent-color) 0.94 0.03 h);
+  --color-indigo-200: oklch(from var(--accent-color) 0.88 0.06 h);
+  --color-indigo-300: oklch(from var(--accent-color) 0.8 0.1 h);
+  --color-indigo-400: oklch(from var(--accent-color) 0.7 0.15 h);
+  --color-indigo-500: oklch(from var(--accent-color) 0.6 0.2 h);
+  --color-indigo-600: var(--accent-color);
+  --color-indigo-700: oklch(from var(--accent-color) 0.45 0.2 h);
+  --color-indigo-800: oklch(from var(--accent-color) 0.35 0.2 h);
+  --color-indigo-900: oklch(from var(--accent-color) 0.25 0.2 h);
+  --color-indigo-950: oklch(from var(--accent-color) 0.15 0.2 h);
+}
+
 @layer utilities {
   .animate-marquee {
     animation: marquee 25s linear infinite;

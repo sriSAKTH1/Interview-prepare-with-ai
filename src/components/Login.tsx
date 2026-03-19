@@ -120,20 +120,6 @@ const Login: React.FC = () => {
               <ChevronRight size={18} className="ml-auto text-slate-300 group-hover:text-indigo-500 transition-colors" />
             </button>
             
-            <div className="relative flex items-center justify-center py-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
-              </div>
-              <span className="relative px-4 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                Trusted by
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4 opacity-40 grayscale">
-              <div className="flex justify-center"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google" className="h-4" /></div>
-              <div className="flex justify-center"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" className="h-4" /></div>
-              <div className="flex justify-center"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" className="h-4" /></div>
-            </div>
           </div>
 
           <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-6 mb-8 border border-indigo-100 dark:border-indigo-800/50">
