@@ -54,6 +54,11 @@ export interface TestResult {
   questions?: any[];
   userAnswers?: (number | string)[];
   interviewScore?: number;
+  codingResult?: {
+    status: string;
+    feedback: string;
+    testResults: any[];
+  };
 }
 
 export interface CompletedTopic {

@@ -218,6 +218,7 @@ export function TestSection({
     if (viewResult) {
       if (viewResult.questions) setQuestions(viewResult.questions);
       if (viewResult.userAnswers) setUserAnswers(viewResult.userAnswers);
+      if (viewResult.codingResult) setSubmissionResult(viewResult.codingResult);
       setTestStep('results');
     }
   }, [viewResult]);
@@ -901,14 +902,15 @@ export function TestSection({
             onComplete({
               id: Math.random().toString(36).substr(2, 9),
               title: `Coding: ${codingProblem?.title}`,
-              score: "100/100",
+              score: evaluation.status === 'Accepted' ? "100/100" : "0/100",
               total: 100,
-              correct: 100,
+              correct: evaluation.status === 'Accepted' ? 100 : 0,
               time: new Date().toLocaleTimeString(),
               status: 'Completed',
-              feedback: "Excellent! Your solution passed all test cases.",
+              feedback: evaluation.feedback,
               weaknesses: [],
-              improvements: ["Try optimizing for space complexity"]
+              improvements: ["Try optimizing for space complexity"],
+              codingResult: evaluation
             });
           }
         }, 1500);
@@ -1089,7 +1091,8 @@ export function TestSection({
           interviewScore: evaluation.score,
           feedback: evaluation.feedback,
           weaknesses: evaluation.weaknesses,
-          improvements: evaluation.improvements
+          improvements: evaluation.improvements,
+          codingResult: submissionResult || undefined
         };
         
         onComplete(finalResult);

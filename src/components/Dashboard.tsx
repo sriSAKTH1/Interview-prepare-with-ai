@@ -16,7 +16,6 @@ export function Dashboard({
   userData,
   onViewResult,
   onGoToSettings,
-  onOpenRoadmap,
   usernames: propUsernames
 }: { 
   history: TestResult[], 
@@ -28,7 +27,6 @@ export function Dashboard({
   userData?: any,
   onViewResult?: (result: TestResult) => void,
   onGoToSettings?: () => void,
-  onOpenRoadmap?: () => void,
   usernames?: any
 }) {
   const [isChangingPath, setIsChangingPath] = useState(false);
@@ -156,13 +154,6 @@ export function Dashboard({
           </div>
         </div>
         <div className="flex gap-3">
-          <button 
-            onClick={onOpenRoadmap}
-            className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm"
-          >
-            <MapPin size={16} />
-            View Roadmap
-          </button>
           <button className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             View Analytics
           </button>

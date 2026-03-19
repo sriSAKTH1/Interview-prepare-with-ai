@@ -37,7 +37,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { StepVisualizer } from './StepVisualizer';
 import ReactMarkdown from 'react-markdown';
 
-type PrepareMode = 'overview' | 'role-plan' | 'dsa-plan' | 'roadmap' | 'resume-questions' | 'company-exam' | 'questions-approach';
+type PrepareMode = 'overview' | 'role-plan' | 'dsa-plan' | 'resume-questions' | 'company-exam' | 'questions-approach';
 
 export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: { 
   careerPath?: string,
@@ -140,14 +140,6 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
       icon: Layout,
       color: 'bg-indigo-500',
       tag: 'Personalized'
-    },
-    {
-      id: 'roadmap',
-      title: 'Career Roadmap',
-      description: 'Visualize the skills and technologies you need to master for your dream role.',
-      icon: Map,
-      color: 'bg-amber-500',
-      tag: 'Strategic'
     },
     {
       id: 'resume-questions',
@@ -354,45 +346,6 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
       setLoading(false);
     }
   };
-  const generateRoadmap = async () => {
-    setLoading(true);
-    setGeneratedContent(null);
-    const displayRole = getDisplayRole();
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Generate a career roadmap for a ${displayRole}. 
-        1. Explain what this roadmap represents for a ${displayRole} career.
-        2. Explain why following this path is beneficial for long-term growth.
-        3. List the stages of learning from fundamentals to advanced specialization.
-        For each stage, list the required skills and tools.
-        Also suggest a Lucide icon name (e.g., 'Book', 'Code', 'Layers', 'Cpu', 'Rocket') that represents the stage.
-        Return the response as a JSON object with this schema:
-        {
-          "role": "string",
-          "whatIsThis": "string",
-          "whyUseThis": "string",
-          "learningPathOverview": "string",
-          "stages": [
-            {
-              "name": "string",
-              "description": "string",
-              "icon": "string",
-              "skills": ["string"],
-              "tools": ["string"]
-            }
-          ]
-        }`,
-        config: { responseMimeType: "application/json" }
-      });
-      setGeneratedContent(JSON.parse(response.text));
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const generateQuestionApproach = async () => {
     if (!userInput) return;
@@ -575,19 +528,6 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
                 Get Started <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </div>
 
-              {option.id === 'roadmap' && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenRoadmap?.();
-                  }}
-                  className="mt-4 w-full py-2 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Map size={14} />
-                  View Visual Roadmap
-                </button>
-              )}
-
               {/* Decorative background element */}
               <div className={`absolute -bottom-12 -right-12 w-32 h-32 ${option.color} opacity-[0.03] rounded-full`} />
             </motion.div>
@@ -624,7 +564,7 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
               </div>
             </div>
             
-            {(mode === 'role-plan' || mode === 'roadmap' || mode === 'company-exam') && !generatedContent && (
+            {(mode === 'role-plan' || mode === 'company-exam') && !generatedContent && (
               <div className="flex flex-wrap items-center gap-3">
                 {mode === 'company-exam' ? (
                   <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
@@ -690,7 +630,7 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
                   </select>
                 )}
                 <button 
-                  onClick={mode === 'role-plan' ? generateRolePlan : mode === 'roadmap' ? generateRoadmap : generateCompanyExamPlan}
+                  onClick={mode === 'role-plan' ? generateRolePlan : generateCompanyExamPlan}
                   disabled={loading || (mode === 'company-exam' && !companyOrExam && !examName)}
                   className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2"
                 >
@@ -968,60 +908,6 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {mode === 'roadmap' && (
-              <div className="relative space-y-12 before:absolute before:left-8 before:top-0 before:bottom-0 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
-                {generatedContent.stages.map((stage: any, i: number) => (
-                  <div key={i} className="relative pl-20 group">
-                    <div className="absolute left-4 top-0 w-8 h-8 bg-white dark:bg-slate-900 border-4 border-indigo-600 rounded-full z-10 group-hover:scale-125 transition-transform flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full" />
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 space-y-4 hover:shadow-xl transition-all relative overflow-hidden">
-                      {/* Background Number */}
-                      <div className="absolute -top-4 -right-4 text-8xl font-black text-slate-50 dark:text-slate-800/50 pointer-events-none">
-                        {i + 1}
-                      </div>
-
-                      <div className="flex items-center justify-between relative z-10">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center">
-                            <Map size={24} />
-                          </div>
-                          <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stage.name}</h3>
-                        </div>
-                      </div>
-                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed relative z-10">{stage.description}</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 relative z-10">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
-                            <Target size={14} /> Skills to Master
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {stage.skills.map((s: string) => (
-                              <span key={s} className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-medium">
-                                {s}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-                            <Zap size={14} /> Tools & Tech
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {stage.tools.map((t: string) => (
-                              <span key={t} className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-medium">
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ))}

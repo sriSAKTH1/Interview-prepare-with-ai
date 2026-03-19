@@ -112,17 +112,49 @@ export async function fetchCodeChefStats(username: string): Promise<PlatformStat
 export async function fetchGitHubStats(username: string): Promise<PlatformStats | null> {
   try {
     console.log(`Fetching GitHub stats for ${username}...`);
-    const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://api.github.com/users/${username}`)}`);
-    const data = await response.json();
+    
+    // GitHub API supports CORS, so we can try direct fetch first
+    let data;
+    try {
+      const response = await fetch(`https://api.github.com/users/${username}`, {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      
+      if (response.ok) {
+        data = await response.json();
+      } else if (response.status === 403 || response.status === 429) {
+        console.warn('GitHub API rate limited or forbidden. Trying proxy...');
+        // Try a different proxy if direct fails
+        const proxyResponse = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.github.com/users/${username}`)}`);
+        const proxyData = await proxyResponse.json();
+        data = JSON.parse(proxyData.contents);
+      } else {
+        console.warn(`GitHub fetch failed with status ${response.status}`);
+        return null;
+      }
+    } catch (fetchError) {
+      console.warn('GitHub direct fetch error, trying proxy...', fetchError);
+      try {
+        const proxyResponse = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://api.github.com/users/${username}`)}`);
+        const proxyData = await proxyResponse.json();
+        data = JSON.parse(proxyData.contents);
+      } catch (proxyError) {
+        console.error('GitHub proxy fetch error:', proxyError);
+        return null;
+      }
+    }
+
     console.log('GitHub response:', data);
-    if (data.login) {
+    if (data && (data.login || data.id)) {
       return {
         platform: 'GitHub',
         username,
-        totalSolved: data.public_repos,
+        totalSolved: data.public_repos || 0,
         difficulty: { easy: 0, medium: 0, hard: 0 },
-        rank: `${data.followers} followers`,
-        rating: data.public_gists,
+        rank: `${data.followers || 0} followers`,
+        rating: data.public_gists || 0,
       };
     }
     return null;

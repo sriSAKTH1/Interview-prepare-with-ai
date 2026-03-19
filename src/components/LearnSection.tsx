@@ -347,33 +347,15 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             onClick={() => {
               setTopic('overview');
               setMode('overview');
-              setShowRoadmap(false);
             }}
             className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all ${
-              topic === 'overview' && !showRoadmap
+              topic === 'overview'
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
                 : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             <Layout size={18} className="shrink-0" />
             {isSidebarOpen && <span className="font-semibold text-sm truncate">Overview</span>}
-          </button>
-
-          {/* Learning Roadmap Button */}
-          <button
-            onClick={() => {
-              setShowRoadmap(true);
-              setTopic('overview');
-              setMode('overview');
-            }}
-            className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all ${
-              showRoadmap 
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
-                : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
-          >
-            <Map size={18} className="shrink-0" />
-            {isSidebarOpen && <span className="font-semibold text-sm truncate">Learning Roadmap</span>}
           </button>
 
           {sidebarCategories.map((category, catIdx) => (
@@ -504,24 +486,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
       {/* Content Area */}
       <div className="flex-1 overflow-hidden bg-white dark:bg-slate-950">
         <AnimatePresence mode="wait">
-          {showRoadmap ? (
-            <motion.div
-              key="roadmap"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              className="h-full overflow-y-auto"
-            >
-              <CurriculumRoadmap 
-                onSelectTopic={(id) => {
-                  setTopic(id as LearnTopic);
-                  setMode('overview');
-                  setShowRoadmap(false);
-                }}
-                completedTopics={completedTopics?.map(t => t.topicId) || []}
-              />
-            </motion.div>
-          ) : mode === 'overview' ? (
+          {mode === 'overview' ? (
             <motion.div
               key={topic}
               initial={{ opacity: 0, x: 20 }}
@@ -532,7 +497,7 @@ export function LearnSection({ topic, setTopic, mode, setMode, careerPath, onMar
             >
               {topic === 'overview' && (
                 <div className="max-w-5xl mx-auto p-8 h-full overflow-y-auto">
-                  <LearnOverview setMode={setMode} onStartJourney={() => setShowRoadmap(true)} />
+                  <LearnOverview setMode={setMode} onStartJourney={() => {}} />
                 </div>
               )}
               {topic === 'questions-approach' && (

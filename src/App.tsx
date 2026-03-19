@@ -11,7 +11,6 @@ import { LearnSection } from './components/LearnSection';
 import { PrepareSection } from './components/PrepareSection';
 import { TestSection } from './components/TestSection';
 import { Settings } from './components/Settings';
-import { Roadmap } from './components/Roadmap';
 import { Logo } from './components/Logo';
 import Login from './components/Login';
 import { Section, LearnTopic, LearnMode, TestResult, CompletedTopic } from './types';
@@ -127,7 +126,6 @@ export default function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showTeamMessage, setShowTeamMessage] = useState(false);
   const [showGreeting, setShowGreeting] = useState(false);
-  const [showRoadmap, setShowRoadmap] = useState(false);
 
   useEffect(() => {
     // Show greeting after a short delay
@@ -406,21 +404,6 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className={`min-h-screen bg-[#f8f9fa] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300`}>
-      {/* Roadmap Overlay */}
-      <AnimatePresence>
-        {showRoadmap && (
-          <motion.div
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[100]"
-          >
-            <Roadmap onClose={() => setShowRoadmap(false)} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Navigation */}
       <AnimatePresence>
         {showGreeting && (
@@ -642,7 +625,6 @@ export default function App() {
                   setActiveSection('test');
                 }}
                 onGoToSettings={() => setActiveSection('settings')}
-                onOpenRoadmap={() => setShowRoadmap(true)}
               />
             </motion.div>
           )}
@@ -678,7 +660,7 @@ export default function App() {
               transition={{ duration: 0.2 }}
               className="h-[calc(100vh-64px)]"
             >
-              <PrepareSection careerPath={careerPath} onStartTest={startTest} onOpenRoadmap={() => setShowRoadmap(true)} />
+              <PrepareSection careerPath={careerPath} onStartTest={startTest} />
             </motion.div>
           )}
 
