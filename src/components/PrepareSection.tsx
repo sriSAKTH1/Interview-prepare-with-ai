@@ -547,7 +547,7 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {prepareOptions.map((option) => (
-            <motion.button
+            <motion.div
               key={option.id}
               whileHover={{ scale: 1.02, y: -4 }}
               whileTap={{ scale: 0.98 }}
@@ -556,7 +556,7 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
                 setGeneratedContent(null);
                 setUserInput('');
               }}
-              className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all text-left group relative overflow-hidden"
+              className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all text-left group relative overflow-hidden cursor-pointer"
             >
               <div className={`w-16 h-16 ${option.color} rounded-2xl flex items-center justify-center text-white mb-6 group-hover:rotate-6 transition-transform`}>
                 <option.icon size={32} />
@@ -590,7 +590,7 @@ export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: {
 
               {/* Decorative background element */}
               <div className={`absolute -bottom-12 -right-12 w-32 h-32 ${option.color} opacity-[0.03] rounded-full`} />
-            </motion.button>
+            </motion.div>
           ))}
         </div>
       </div>

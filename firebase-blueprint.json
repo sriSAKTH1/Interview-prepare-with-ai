@@ -54,6 +54,20 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "title", "score", "createdAt"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback and bug reports",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "type": { "type": "string", "enum": ["General Feedback", "Bug Report", "Feature Request", "Other"] },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["new", "reviewed", "resolved"] }
+      },
+      "required": ["uid", "type", "content", "createdAt"]
     }
   },
   "firestore": {
@@ -68,6 +82,10 @@
     "/testResults/{id}": {
       "schema": "TestResult",
       "description": "Assessment results"
+    },
+    "/feedback/{id}": {
+      "schema": "Feedback",
+      "description": "User feedback"
     }
   }
 }

@@ -12,6 +12,7 @@ import { PrepareSection } from './components/PrepareSection';
 import { TestSection } from './components/TestSection';
 import { Settings } from './components/Settings';
 import { Roadmap } from './components/Roadmap';
+import { Logo } from './components/Logo';
 import Login from './components/Login';
 import { Section, LearnTopic, LearnMode, TestResult, CompletedTopic } from './types';
 import { 
@@ -392,7 +393,7 @@ export default function App() {
           transition={{ duration: 2, repeat: Infinity }}
           className="w-16 h-16 bg-indigo-600 rounded-3xl shadow-xl shadow-indigo-500/20 flex items-center justify-center"
         >
-          <Code2 className="text-white" size={32} />
+          <Logo className="text-white" size={32} />
         </motion.div>
       </div>
     );
@@ -444,8 +445,10 @@ export default function App() {
       <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-50 h-16">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">P</div>
-            <span className="font-bold text-xl tracking-tight dark:text-white">PrepMaster</span>
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+              <Logo size={20} />
+            </div>
+            <span className="font-bold text-xl tracking-tight dark:text-white">DSAForge</span>
           </div>
           
           <div className="flex items-center gap-6">
@@ -499,7 +502,7 @@ export default function App() {
                             <Zap size={16} />
                             <span className="text-xs font-bold uppercase tracking-wider">Message from Team</span>
                           </div>
-                          <h4 className="font-bold">Welcome to PrepMaster!</h4>
+                          <h4 className="font-bold">Welcome to DSAForge!</h4>
                         </div>
                         <div className="p-4 space-y-3">
                           <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">

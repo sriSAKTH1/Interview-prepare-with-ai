@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { LogIn, Code2, Rocket, Brain, Target, Sparkles, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { signInWithGoogle } from '../firebase';
+import { Logo } from './Logo';
 
 const Login: React.FC = () => {
   const [isSignup, setIsSignup] = React.useState(false);
@@ -120,9 +121,9 @@ const Login: React.FC = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
             <div className="w-12 h-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/20">
-              <Code2 className="text-indigo-400" size={28} />
+              <Logo className="text-indigo-400" size={32} />
             </div>
-            <span className="text-2xl font-black text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">PrepMaster</span>
+            <span className="text-2xl font-black text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">DSAForge</span>
           </div>
 
           <motion.div
@@ -170,7 +171,7 @@ const Login: React.FC = () => {
 
         {/* Decorative Rail Text */}
         <div className="absolute right-4 bottom-24 writing-vertical-rl rotate-180 text-[10px] font-bold tracking-[0.2em] text-white/20 uppercase hidden lg:block">
-          Elevate Your Career • PrepMaster v2.0 • 2026
+          Elevate Your Career • DSAForge v2.0 • 2026
         </div>
       </div>
 

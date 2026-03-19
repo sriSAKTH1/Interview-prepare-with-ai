@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen, Edit2, X, Trophy, Globe, Github, Activity, MapPin } from 'lucide-react';
+import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, Target, Sparkles, CheckCircle2, BookOpen, Edit2, X, Trophy, Globe, Github, Activity, MapPin, Settings as SettingsIcon, Plus } from 'lucide-react';
 import { TestResult, CompletedTopic } from '../types';
 import { CodingDashboard } from './CodingDashboard';
 import { InterviewReadiness } from './InterviewReadiness';
@@ -115,9 +115,8 @@ export function Dashboard({
   const calculateReadiness = () => {
     const dsaPractice = Math.min(100, (completedTopics.length * 5));
     const aptitude = Math.min(100, aptitudeScore);
-    const codingActivity = Math.min(100, (totalSolved / 2));
     const mockInterview = Math.min(100, (history.length * 10));
-    return Math.round((dsaPractice + aptitude + codingActivity + mockInterview) / 4);
+    return Math.round((dsaPractice + aptitude + mockInterview) / 3);
   };
 
   const readinessScore = calculateReadiness();
@@ -240,16 +239,6 @@ export function Dashboard({
         >
           <Sparkles size={16} /> Interview Readiness
         </button>
-        <button 
-          onClick={() => setActiveTab('coding')}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-            activeTab === 'coding' 
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' 
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-          }`}
-        >
-          Coding Activity
-        </button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -262,7 +251,7 @@ export function Dashboard({
             className="space-y-8"
           >
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <StatCard 
                 title="LeetCode Solved" 
                 value={isLoadingStats ? "..." : leetcodeSolved.toString()} 
@@ -271,14 +260,6 @@ export function Dashboard({
                 color="text-orange-600" 
                 bgColor="bg-orange-50" 
                 onClick={leetcodeSolved === 0 ? onGoToSettings : undefined}
-              />
-              <StatCard 
-                title="Coding Activity" 
-                value={totalSolved.toString()} 
-                change={`Total Solved`} 
-                icon={Trophy} 
-                color="text-amber-600" 
-                bgColor="bg-amber-50" 
               />
               <StatCard 
                 title="Platforms" 
@@ -300,37 +281,89 @@ export function Dashboard({
               />
             </div>
             
-            {/* Platform Marquee */}
-            {platformStats.length > 0 && (
-              <div className="bg-white dark:bg-slate-900 py-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative">
-                <div className="text-center mb-6">
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Connected Platforms</h3>
+            {/* Coding Platform Integration Section */}
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full -ml-32 -mb-32 blur-3xl" />
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 relative z-10">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Globe className="text-indigo-600 dark:text-indigo-400" size={24} />
+                    Coding Platform Integration
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Your connected coding profiles and real-time synchronization status.</p>
                 </div>
-                <div className="flex overflow-hidden group">
-                  <div className="flex animate-marquee whitespace-nowrap py-2">
-                    {[...platformStats, ...platformStats, ...platformStats].map((platform, idx) => (
-                      <div key={`${platform.platform}-${idx}`} className="flex items-center gap-4 mx-12">
-                        <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
-                          {platform.platform === 'LeetCode' && <Code2 size={24} />}
-                          {platform.platform === 'GitHub' && <Github size={24} />}
-                          {platform.platform === 'Codeforces' && <Activity size={24} />}
-                          {platform.platform === 'CodeChef' && <Trophy size={24} />}
-                          {platform.platform === 'HackerRank' && <Target size={24} />}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xl font-bold text-slate-400 dark:text-slate-600 group-hover:text-indigo-500 transition-colors">
-                            {platform.platform}
-                          </span>
-                          <span className="text-[10px] font-medium text-slate-300 dark:text-slate-700 uppercase tracking-wider">
-                            @{platform.username} • {platform.totalSolved} {platform.platform === 'GitHub' ? 'Repos' : 'Solved'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <button 
+                  onClick={onGoToSettings}
+                  className="px-4 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold transition-all flex items-center gap-2 border border-slate-200 dark:border-slate-700"
+                >
+                  <SettingsIcon size={16} />
+                  Manage Connections
+                </button>
               </div>
-            )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 relative z-10">
+                {[
+                  { name: 'LeetCode', key: 'leetcode', icon: Code2, color: 'text-orange-500', bgColor: 'bg-orange-50 dark:bg-orange-900/20' },
+                  { name: 'GitHub', key: 'github', icon: Github, color: 'text-slate-900 dark:text-white', bgColor: 'bg-slate-50 dark:bg-slate-800' },
+                  { name: 'Codeforces', key: 'codeforces', icon: Activity, color: 'text-blue-500', bgColor: 'bg-blue-50 dark:bg-blue-900/20' },
+                  { name: 'CodeChef', key: 'codechef', icon: Trophy, color: 'text-amber-600', bgColor: 'bg-amber-50 dark:bg-amber-900/20' },
+                  { name: 'HackerRank', key: 'hackerrank', icon: Target, color: 'text-emerald-600', bgColor: 'bg-emerald-50 dark:bg-emerald-900/20' }
+                ].map((platform, idx) => {
+                  const username = usernames[platform.key];
+                  const isConnected = Boolean(username);
+                  const stats = platformStats.find(s => s.platform.toLowerCase() === platform.name.toLowerCase());
+                  
+                  return (
+                    <motion.div 
+                      key={platform.key}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + (idx * 0.05) }}
+                      className={`p-4 rounded-2xl border transition-all group ${
+                        isConnected 
+                          ? 'bg-white dark:bg-slate-800 border-indigo-100 dark:border-indigo-900/50 shadow-sm' 
+                          : 'bg-slate-50/50 dark:bg-slate-900/50 border-dashed border-slate-200 dark:border-slate-800 opacity-60 grayscale hover:grayscale-0 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`p-2 rounded-xl ${platform.bgColor} ${platform.color}`}>
+                          <platform.icon size={18} />
+                        </div>
+                        {isConnected ? (
+                          <div className="flex items-center gap-1">
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Live</span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Offline</span>
+                        )}
+                      </div>
+                      
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">{platform.name}</h4>
+                      {isConnected ? (
+                        <div className="mt-1">
+                          <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold truncate">@{username}</p>
+                          {stats && (
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                              {stats.totalSolved || stats.rating || 0} {platform.name === 'GitHub' ? 'Repos' : 'Solved'}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={onGoToSettings}
+                          className="mt-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors"
+                        >
+                          <Plus size={10} /> Connect Now
+                        </button>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Recent Activity */}
@@ -422,23 +455,6 @@ export function Dashboard({
               history={history}
               completedTopics={completedTopics}
               platformStats={platformStats}
-              aptitudeScore={aptitudeScore}
-            />
-          </motion.div>
-        )}
-
-        {activeTab === 'coding' && (
-          <motion.div
-            key="coding"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-          >
-            <CodingDashboard 
-              onStartTest={onStartTest} 
-              initialStats={platformStats}
-              initialUsernames={usernames}
-              onGoToSettings={onGoToSettings}
               aptitudeScore={aptitudeScore}
             />
           </motion.div>

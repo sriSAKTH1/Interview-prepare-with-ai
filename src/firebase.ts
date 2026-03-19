@@ -17,7 +17,7 @@ import {
   getDocFromServer
 } from 'firebase/firestore';
 
-export { doc, setDoc, collection };
+export { doc, setDoc, collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy, limit };
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase

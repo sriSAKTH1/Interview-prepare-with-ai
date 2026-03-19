@@ -19,6 +19,12 @@ import {
   AlertCircle,
   Zap,
   CheckCircle2,
+  HelpCircle,
+  MessageSquare,
+  LifeBuoy,
+  Info,
+  Send,
+  ExternalLink,
   RefreshCw
 } from 'lucide-react';
 
@@ -30,7 +36,8 @@ type SettingsTab =
   | 'theme' 
   | 'progress' 
   | 'security' 
-  | 'privacy';
+  | 'privacy'
+  | 'help';
 
 export function Settings({ user, userData, careerPath, setCareerPath, themeMode, setThemeMode, accentColor, setAccentColor, onClose }: {
   user: any;
@@ -48,6 +55,12 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [connectingPlatform, setConnectingPlatform] = useState<any>(null);
   const [platformUsername, setPlatformUsername] = useState('');
+
+  // Feedback state
+  const [feedbackType, setFeedbackType] = useState('General Feedback');
+  const [feedbackContent, setFeedbackContent] = useState('');
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
+  const [feedbackStatus, setFeedbackStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
 
   // Local state for all settings to be saved at once
   const [localDisplayName, setLocalDisplayName] = useState(userData?.displayName || user?.displayName || '');
@@ -196,6 +209,35 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
     }));
   };
 
+  const handleSendFeedback = async () => {
+    if (!feedbackContent.trim()) return;
+    
+    setIsSendingFeedback(true);
+    setFeedbackStatus('sending');
+    
+    try {
+      const { doc, db, collection, addDoc, serverTimestamp } = await import('../firebase');
+      await addDoc(collection(db, 'feedback'), {
+        uid: user?.uid,
+        email: user?.email,
+        type: feedbackType,
+        content: feedbackContent,
+        createdAt: serverTimestamp(),
+        status: 'new'
+      });
+      
+      setFeedbackStatus('success');
+      setFeedbackContent('');
+      setTimeout(() => setFeedbackStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Failed to send feedback:', error);
+      setFeedbackStatus('error');
+      setTimeout(() => setFeedbackStatus('idle'), 3000);
+    } finally {
+      setIsSendingFeedback(false);
+    }
+  };
+
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'learning', label: 'Learning Preferences', icon: Book },
@@ -205,6 +247,7 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
     { id: 'progress', label: 'Progress Tracking', icon: BarChart3 },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'privacy', label: 'Data & Privacy', icon: Lock },
+    { id: 'help', label: 'Help & Feedback', icon: HelpCircle },
   ];
 
   return (
@@ -484,7 +527,7 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                       { id: 'studyReminders', title: 'Study Reminders', desc: 'Get notified when it\'s time for your daily practice.', icon: Bell },
                       { id: 'newChallenges', title: 'New Challenges', desc: 'Alerts for new problems matching your career path.', icon: Zap },
                       { id: 'weeklyProgress', title: 'Weekly Progress', desc: 'Receive a summary of your learning activity every Monday.', icon: BarChart3 },
-                      { id: 'platformUpdates', title: 'Platform Updates', desc: 'Important news about PrepMaster features and content.', icon: AlertCircle },
+                      { id: 'platformUpdates', title: 'Platform Updates', desc: 'Important news about DSAForge features and content.', icon: AlertCircle },
                     ].map((item) => (
                       <div key={item.title} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-6">
                         <div className="flex items-start justify-between">
@@ -682,6 +725,126 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                         </div>
                       ))}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'help' && (
+                <div className="space-y-10">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <Info size={20} />
+                      </div>
+                      <h3 className="text-2xl font-bold dark:text-white">About DSAForge</h3>
+                    </div>
+                    <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl space-y-4">
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        DSAForge is your ultimate companion for technical interview preparation. We combine curated learning paths, real-time platform integration, and AI-powered assessments to help you land your dream job.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2 shrink-0" />
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Comprehensive DSA & System Design roadmaps</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2 shrink-0" />
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Live sync with LeetCode, GitHub, and more</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2 shrink-0" />
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Mock tests tailored to specific companies</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2 shrink-0" />
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Personalized progress tracking & analytics</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <MessageSquare size={20} />
+                      </div>
+                      <h3 className="text-2xl font-bold dark:text-white">Share Your Feedback</h3>
+                    </div>
+                    
+                    <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[2.5rem] shadow-sm space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">What type of feedback do you have?</label>
+                        <select 
+                          value={feedbackType}
+                          onChange={(e) => setFeedbackType(e.target.value)}
+                          className="w-full px-5 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                        >
+                          <option>General Feedback</option>
+                          <option>Bug Report</option>
+                          <option>Feature Request</option>
+                          <option>Other</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Help us improve your experience</label>
+                        <textarea 
+                          rows={4}
+                          value={feedbackContent}
+                          onChange={(e) => setFeedbackContent(e.target.value)}
+                          placeholder="Tell us what's on your mind..."
+                          className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
+                        />
+                        <div className="flex justify-end">
+                          <span className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{feedbackContent.length}/500</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={handleSendFeedback}
+                        disabled={isSendingFeedback || !feedbackContent.trim()}
+                        className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${
+                          feedbackStatus === 'success' 
+                            ? 'bg-emerald-500 text-white' 
+                            : feedbackStatus === 'error'
+                            ? 'bg-rose-500 text-white'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {feedbackStatus === 'sending' ? (
+                          <>
+                            <RefreshCw size={18} className="animate-spin" />
+                            Sending...
+                          </>
+                        ) : feedbackStatus === 'success' ? (
+                          <>
+                            <CheckCircle2 size={18} />
+                            Feedback Sent!
+                          </>
+                        ) : feedbackStatus === 'error' ? (
+                          <>
+                            <AlertCircle size={18} />
+                            Failed to Send
+                          </>
+                        ) : (
+                          <>
+                            <Send size={18} />
+                            Send Feedback
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-4">
+                    <button className="flex items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-sm font-bold hover:bg-slate-100 transition-all">
+                      <LifeBuoy size={18} />
+                      Documentation
+                    </button>
+                    <button className="flex items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl text-sm font-bold hover:bg-slate-100 transition-all">
+                      <ExternalLink size={18} />
+                      Community Forum
+                    </button>
                   </div>
                 </div>
               )}

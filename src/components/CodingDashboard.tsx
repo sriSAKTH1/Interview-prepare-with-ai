@@ -81,11 +81,10 @@ export function CodingDashboard({
     overall: 0,
     dsaPractice: 0,
     aptitude: Math.min(aptitudeScore, 70),
-    codingActivity: 0,
     mockInterview: 0,
     suggestions: [
       'Connect your coding platforms to see your interview readiness score.',
-      'Maintain your daily streak on LeetCode to boost coding activity score.'
+      'Maintain your daily streak on LeetCode to boost your score.'
     ]
   });
 
@@ -125,10 +124,9 @@ export function CodingDashboard({
       
       // Dynamic calculation logic
       const dsaScore = Math.min(100, Math.round((totalSolved / 500) * 100));
-      const activityScore = Math.min(100, platformStats.length * 20 + (totalSolved > 100 ? 20 : 0));
       const mockScore = 65 + Math.floor(Math.random() * 10); // Simulated for now
       
-      const overall = Math.round((dsaScore + Math.min(aptitudeScore, 70) + activityScore + mockScore) / 4);
+      const overall = Math.round((dsaScore + Math.min(aptitudeScore, 70) + mockScore) / 3);
       
       const newSuggestions = [];
       if (dsaScore < 50) newSuggestions.push('Focus on solving more problems on LeetCode and Codeforces.');
@@ -140,7 +138,6 @@ export function CodingDashboard({
         overall,
         dsaPractice: dsaScore,
         aptitude: Math.min(aptitudeScore, 70),
-        codingActivity: activityScore,
         mockInterview: mockScore,
         suggestions: newSuggestions
       });
@@ -382,7 +379,6 @@ export function CodingDashboard({
             <div className="w-full space-y-3">
               <ScoreBar label="DSA Practice" value={readinessScore.dsaPractice} color="bg-indigo-500" />
               <ScoreBar label="Aptitude" value={readinessScore.aptitude} color="bg-emerald-500" />
-              <ScoreBar label="Coding Activity" value={readinessScore.codingActivity} color="bg-amber-500" />
               <ScoreBar label="Mock Interview" value={readinessScore.mockInterview} color="bg-rose-500" />
             </div>
 

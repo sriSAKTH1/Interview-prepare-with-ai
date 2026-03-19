@@ -48,12 +48,6 @@ export function InterviewReadiness({
     // 2. Aptitude (0-100)
     const aptitude = Math.min(100, aptitudeScore);
 
-    // 3. Coding Activity (0-100)
-    // Based on platform stats (LeetCode, etc.)
-    const totalSolved = platformStats.reduce((acc, curr) => acc + (curr.totalSolved || 0), 0);
-    // Logarithmic-like scale: 50 solved = 40 pts, 150 solved = 70 pts, 300+ solved = 100 pts
-    const codingActivity = Math.min(100, Math.sqrt(totalSolved) * 5.8); 
-
     // 4. Mock Interview (0-100)
     const mockInterviews = history.filter(h => h.title.toLowerCase().includes('mock') || h.title.toLowerCase().includes('interview') || h.title.toLowerCase().includes('company'));
     const interviewsWithScore = mockInterviews.filter(h => h.interviewScore !== undefined && h.interviewScore !== null);
@@ -74,10 +68,9 @@ export function InterviewReadiness({
 
     // Overall Score (Weighted)
     const overall = Math.round(
-      (dsaPractice * 0.35) + 
-      (aptitude * 0.15) + 
-      (codingActivity * 0.25) + 
-      (mockInterview * 0.25)
+      (dsaPractice * 0.45) + 
+      (aptitude * 0.20) + 
+      (mockInterview * 0.35)
     );
 
     // Dynamic Suggestions
@@ -91,12 +84,6 @@ export function InterviewReadiness({
 
     if (aptitude < 70) {
       suggestions.push("Aptitude is often the first filter in interviews. Aim for a consistent 85%+ in practice tests.");
-    }
-
-    if (codingActivity < 50) {
-      suggestions.push(`You've solved ${totalSolved} problems. Aim for 150+ to significantly boost your problem-solving speed.`);
-    } else if (codingActivity < 90) {
-      suggestions.push("Great coding consistency! Focus on participating in weekly contests to improve under pressure.");
     }
 
     if (mockInterview < 60) {
@@ -119,7 +106,6 @@ export function InterviewReadiness({
       overall,
       dsaPractice: Math.round(dsaPractice),
       aptitude: Math.round(aptitude),
-      codingActivity: Math.round(codingActivity),
       mockInterview: Math.round(mockInterview),
       suggestions: suggestions.slice(0, 5) // Max 5 suggestions
     };
@@ -145,14 +131,6 @@ export function InterviewReadiness({
       desc: 'Based on your recent aptitude performance'
     },
     { 
-      label: 'Coding Activity', 
-      value: score.codingActivity, 
-      icon: Code2, 
-      color: 'text-amber-600', 
-      bg: 'bg-amber-50',
-      desc: 'Based on your LeetCode/Codeforces stats'
-    },
-    { 
       label: 'Mock Interview', 
       value: score.mockInterview, 
       icon: MessageSquare, 
@@ -173,7 +151,7 @@ export function InterviewReadiness({
             </div>
             <h2 className="text-4xl font-bold">Interview Readiness</h2>
             <p className="text-slate-400 max-w-md">
-              Your comprehensive readiness score based on practice, aptitude, coding activity, and mock performance.
+              Your comprehensive readiness score based on practice, aptitude, and mock performance.
             </p>
           </div>
 
@@ -197,7 +175,7 @@ export function InterviewReadiness({
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {metrics.map((m, i) => (
           <motion.div
             key={m.label}

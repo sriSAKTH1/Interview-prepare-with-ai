@@ -28,7 +28,6 @@ export interface InterviewReadinessScore {
   overall: number;
   dsaPractice: number;
   aptitude: number;
-  codingActivity: number;
   mockInterview: number;
   suggestions: string[];
 }
