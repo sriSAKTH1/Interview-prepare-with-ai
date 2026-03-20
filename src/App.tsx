@@ -4,13 +4,14 @@
  */
 
 import { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
-import { Home, BookOpen, Bell, Search, User, ClipboardCheck, Zap, Settings as SettingsIcon, LogIn, LogOut, Code2 } from 'lucide-react';
+import { Home, BookOpen, Bell, Search, User, ClipboardCheck, Zap, Settings as SettingsIcon, LogIn, LogOut, Code2, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dashboard } from './components/Dashboard';
 import { LearnSection } from './components/LearnSection';
 import { PrepareSection } from './components/PrepareSection';
 import { TestSection } from './components/TestSection';
 import { Settings } from './components/Settings';
+import { NotepadSection } from './components/NotepadSection';
 import { Logo } from './components/Logo';
 import Login from './components/Login';
 import { Section, LearnTopic, LearnMode, TestResult, CompletedTopic } from './types';
@@ -508,6 +509,18 @@ export default function App() {
                   )}
                 </AnimatePresence>
               </div>
+
+              <button 
+                onClick={() => setActiveSection('notepad')}
+                className={`p-2 rounded-xl transition-all ${
+                  activeSection === 'notepad' 
+                    ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' 
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                }`}
+                title="Notepad"
+              >
+                <FileText size={20} />
+              </button>
               
               <div className="flex items-center gap-3">
                 <span className="hidden lg:block text-sm font-bold text-slate-600 dark:text-slate-400 mr-1">
@@ -703,6 +716,19 @@ export default function App() {
                 setAccentColor={setAccentColor}
                 onClose={() => setActiveSection('home')}
               />
+            </motion.div>
+          )}
+
+          {activeSection === 'notepad' && (
+            <motion.div
+              key="notepad"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              transition={{ duration: 0.2 }}
+              className="h-[calc(100vh-64px)]"
+            >
+              <NotepadSection user={user} />
             </motion.div>
           )}
         </AnimatePresence>

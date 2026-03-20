@@ -39,10 +39,9 @@ import ReactMarkdown from 'react-markdown';
 
 type PrepareMode = 'overview' | 'role-plan' | 'dsa-plan' | 'resume-questions' | 'company-exam' | 'questions-approach';
 
-export function PrepareSection({ careerPath, onStartTest, onOpenRoadmap }: { 
+export function PrepareSection({ careerPath, onStartTest }: { 
   careerPath?: string,
-  onStartTest?: (config: any) => void,
-  onOpenRoadmap?: () => void
+  onStartTest?: (config: any) => void
 }) {
   const [mode, setMode] = useState<PrepareMode>('overview');
   const [loading, setLoading] = useState(false);

@@ -14,10 +14,11 @@ import {
   serverTimestamp,
   orderBy,
   limit,
-  getDocFromServer
+  getDocFromServer,
+  deleteDoc
 } from 'firebase/firestore';
 
-export { doc, setDoc, collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy, limit };
+export { doc, setDoc, collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy, limit, deleteDoc };
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase

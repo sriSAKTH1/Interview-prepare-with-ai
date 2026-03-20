@@ -3,6 +3,7 @@ import { Clock, ClipboardCheck, BarChart3, Award, Layout, ChevronRight, Code2, T
 import { TestResult, CompletedTopic } from '../types';
 import { CodingDashboard } from './CodingDashboard';
 import { InterviewReadiness } from './InterviewReadiness';
+import { StudyTimer } from './StudyTimer';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchAllPlatformStats, PlatformStats } from '../services/platformService';
 
@@ -270,6 +271,14 @@ export function Dashboard({
                 bgColor="bg-indigo-50" 
                 onClick={() => setActiveTab('readiness')}
               />
+              <StatCard 
+                title="Study Time" 
+                value={studyHours} 
+                change="Focused" 
+                icon={Clock} 
+                color="text-rose-600" 
+                bgColor="bg-rose-50" 
+              />
             </div>
             
             {/* Coding Platform Integration Section */}
@@ -410,9 +419,12 @@ export function Dashboard({
               </div>
 
               {/* Recommended */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recommended for You</h2>
-                <div className="space-y-3">
+              <div className="space-y-8">
+                <StudyTimer user={user} />
+                
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recommended for You</h2>
+                  <div className="space-y-3">
                   <RecommendationCard 
                     title="Advanced React Patterns" 
                     description="Master hooks, HOCs and performance optimization."
@@ -432,8 +444,9 @@ export function Dashboard({
                 </div>
               </div>
             </div>
-          </motion.div>
-        )}
+          </div>
+        </motion.div>
+      )}
 
         {activeTab === 'readiness' && (
           <motion.div

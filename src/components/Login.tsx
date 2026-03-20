@@ -137,7 +137,7 @@ const Login: React.FC = () => {
               INTERVIEW.
             </h1>
             <p className="text-xl text-slate-400 max-w-md font-medium leading-relaxed">
-              The all-in-one platform to track your <span className="text-white">DSA progress</span>, sync platform stats, and get personalized roadmaps.
+              The all-in-one platform to track your <span className="text-white">DSA progress</span>, sync platform stats, and get personalized study plans.
             </p>
           </motion.div>
         </div>
@@ -145,7 +145,7 @@ const Login: React.FC = () => {
         <div className="relative z-10 mt-12 lg:mt-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {[
-              { icon: Rocket, title: 'Smart Roadmaps', desc: 'AI-driven learning paths' },
+              { icon: Rocket, title: 'AI Study Plans', desc: 'Personalized learning paths' },
               { icon: Brain, title: 'Real-time Stats', desc: 'Sync LeetCode & GitHub' },
               { icon: Target, title: 'Mock Tests', desc: 'Company-specific prep' },
               { icon: Sparkles, title: 'Skill Analysis', desc: 'Identify your weak spots' }

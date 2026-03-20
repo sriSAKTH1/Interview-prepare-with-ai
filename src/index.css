@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "react-datepicker/dist/react-datepicker.css";
 
 @theme {
   --color-indigo-50: oklch(from var(--accent-color) 0.97 0.01 h);
@@ -12,6 +13,46 @@
   --color-indigo-800: oklch(from var(--accent-color) 0.35 0.2 h);
   --color-indigo-900: oklch(from var(--accent-color) 0.25 0.2 h);
   --color-indigo-950: oklch(from var(--accent-color) 0.15 0.2 h);
+}
+
+@layer utilities {
+  .dark .react-datepicker {
+    background-color: #0f172a;
+    border-color: #1e293b;
+    color: #f8fafc;
+  }
+  .dark .react-datepicker__header {
+    background-color: #1e293b;
+    border-bottom-color: #334155;
+  }
+  .dark .react-datepicker__current-month,
+  .dark .react-datepicker__day-name,
+  .dark .react-datepicker-time__header {
+    color: #f8fafc;
+  }
+  .dark .react-datepicker__day {
+    color: #cbd5e1;
+  }
+  .dark .react-datepicker__day:hover {
+    background-color: #334155;
+  }
+  .dark .react-datepicker__day--selected {
+    background-color: var(--accent-color);
+    color: white;
+  }
+  .dark .react-datepicker__time-container {
+    border-left-color: #334155;
+    background-color: #0f172a;
+  }
+  .dark .react-datepicker__time-list-item:hover {
+    background-color: #334155 !important;
+  }
+  .dark .react-datepicker__time-list-item--selected {
+    background-color: var(--accent-color) !important;
+  }
+  .dark .react-datepicker__input-container input {
+    background-color: transparent;
+  }
 }
 
 @layer utilities {

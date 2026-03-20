@@ -68,6 +68,19 @@
         "status": { "type": "string", "enum": ["new", "reviewed", "resolved"] }
       },
       "required": ["uid", "type", "content", "createdAt"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "User's personal note",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "updatedAt": { "type": "number" },
+        "isPinned": { "type": "boolean" }
+      },
+      "required": ["uid", "title", "updatedAt"]
     }
   },
   "firestore": {
@@ -86,6 +99,10 @@
     "/feedback/{id}": {
       "schema": "Feedback",
       "description": "User feedback"
+    },
+    "/notes/{id}": {
+      "schema": "Note",
+      "description": "User's personal notes"
     }
   }
 }

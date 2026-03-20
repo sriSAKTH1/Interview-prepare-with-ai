@@ -101,6 +101,21 @@ service cloud.firestore {
              (!('status' in data) || data.status in ['new', 'reviewed', 'resolved']);
     }
 
+    function isValidNote(data) {
+      return data.keys().hasAll(['uid', 'title', 'updatedAt']) &&
+             data.uid is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             (!('content' in data) || (data.content is string && data.content.size() <= 50000)) &&
+             data.updatedAt is number &&
+             (!('isPinned' in data) || data.isPinned is bool);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "sudharsanm014@gmail.com" && request.auth.token.email_verified == true));
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -109,6 +124,13 @@ service cloud.firestore {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid) && isValidUser(request.resource.data);
       allow update: if isOwner(uid) && isValidUser(request.resource.data);
+    }
+
+    match /notes/{id} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if incomingDataIsOwner() && isValidNote(request.resource.data);
+      allow update: if isDocOwner() && incomingDataIsOwner() && isValidNote(request.resource.data);
+      allow delete: if isDocOwner();
     }
 
     match /completedTopics/{id} {
