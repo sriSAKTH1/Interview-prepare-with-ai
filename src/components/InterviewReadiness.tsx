@@ -20,13 +20,15 @@ interface InterviewReadinessProps {
   completedTopics: CompletedTopic[];
   platformStats: any[];
   aptitudeScore: number;
+  userData?: any;
 }
 
 export function InterviewReadiness({ 
   history, 
   completedTopics, 
   platformStats, 
-  aptitudeScore 
+  aptitudeScore,
+  userData
 }: InterviewReadinessProps) {
   
   // Calculate scores
@@ -67,14 +69,22 @@ export function InterviewReadiness({
     }
 
     // Overall Score (Weighted)
+    const languages = userData?.languages || [];
+    const languageBonus = Math.min(10, languages.length * 2.5); // Max 10 points bonus for languages
+    
     const overall = Math.round(
-      (dsaPractice * 0.45) + 
+      (dsaPractice * 0.40) + 
       (aptitude * 0.20) + 
-      (mockInterview * 0.35)
+      (mockInterview * 0.30) +
+      (languageBonus * 1.0)
     );
 
     // Dynamic Suggestions
     const suggestions = [];
+    
+    if (languages.length === 0) {
+      suggestions.push("Specify your programming language proficiency in settings to improve your readiness analysis.");
+    }
     
     if (dsaPractice < 50) {
       suggestions.push("Your DSA foundation needs work. Complete at least 10 more topics in the Learn section.");
@@ -137,6 +147,14 @@ export function InterviewReadiness({
       color: 'text-rose-600', 
       bg: 'bg-rose-50',
       desc: 'Based on mock interview results'
+    },
+    {
+      label: 'Language Mastery',
+      value: Math.min(100, (userData?.languages?.length || 0) * 25),
+      icon: Code2,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+      desc: 'Based on your programming language proficiency'
     }
   ];
 
@@ -223,6 +241,27 @@ export function InterviewReadiness({
               </div>
             ))}
           </div>
+
+          {userData?.languages && userData.languages.length > 0 && (
+            <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Language Proficiency Breakdown</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {userData.languages.map((lang: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{lang.language}</span>
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
+                      lang.level === 'Expert' ? 'bg-purple-50 text-purple-600' :
+                      lang.level === 'Advanced' ? 'bg-blue-50 text-blue-600' :
+                      lang.level === 'Intermediate' ? 'bg-emerald-50 text-emerald-600' :
+                      'bg-slate-50 text-slate-600'
+                    }`}>
+                      {lang.level}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white flex flex-col justify-between relative overflow-hidden">

@@ -68,3 +68,23 @@ export interface CompletedTopic {
   category: string;
   completedAt: string;
 }
+
+export interface LanguageProficiency {
+  language: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+}
+
+export interface UserData {
+  uid: string;
+  email: string;
+  displayName?: string;
+  bio?: string;
+  careerPath?: string;
+  preferredLanguage?: string;
+  languages?: LanguageProficiency[];
+  dailyGoal?: number;
+  accentColor?: string;
+  themeMode?: 'light' | 'dark' | 'system';
+  totalStudyMinutes?: number;
+  updatedAt?: string;
+}

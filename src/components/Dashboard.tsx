@@ -27,7 +27,7 @@ export function Dashboard({
   user?: any,
   userData?: any,
   onViewResult?: (result: TestResult) => void,
-  onGoToSettings?: () => void,
+  onGoToSettings?: (tab?: string) => void,
   usernames?: any
 }) {
   const [isChangingPath, setIsChangingPath] = useState(false);
@@ -243,7 +243,7 @@ export function Dashboard({
             className="space-y-8"
           >
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard 
                 title="LeetCode Solved" 
                 value={isLoadingStats ? "..." : leetcodeSolved.toString()} 
@@ -251,7 +251,7 @@ export function Dashboard({
                 icon={Code2} 
                 color="text-orange-600" 
                 bgColor="bg-orange-50" 
-                onClick={leetcodeSolved === 0 ? onGoToSettings : undefined}
+                onClick={leetcodeSolved === 0 ? () => onGoToSettings?.('platforms') : undefined}
               />
               <StatCard 
                 title="Platforms" 
@@ -260,7 +260,7 @@ export function Dashboard({
                 icon={Globe} 
                 color="text-emerald-600" 
                 bgColor="bg-emerald-50" 
-                onClick={platformsCount === 0 ? onGoToSettings : undefined}
+                onClick={platformsCount === 0 ? () => onGoToSettings?.('platforms') : undefined}
               />
               <StatCard 
                 title="Readiness" 
@@ -270,6 +270,15 @@ export function Dashboard({
                 color="text-indigo-600" 
                 bgColor="bg-indigo-50" 
                 onClick={() => setActiveTab('readiness')}
+              />
+              <StatCard 
+                title="Languages" 
+                value={(userData?.languages?.length || 0).toString()} 
+                change="Mastery" 
+                icon={Code2} 
+                color="text-amber-600" 
+                bgColor="bg-amber-50" 
+                onClick={() => onGoToSettings?.('languages')}
               />
               <StatCard 
                 title="Study Time" 
@@ -295,7 +304,7 @@ export function Dashboard({
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Your connected coding profiles and real-time synchronization status.</p>
                 </div>
                 <button 
-                  onClick={onGoToSettings}
+                  onClick={() => onGoToSettings?.('platforms')}
                   className="px-4 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold transition-all flex items-center gap-2 border border-slate-200 dark:border-slate-700"
                 >
                   <SettingsIcon size={16} />
@@ -353,7 +362,7 @@ export function Dashboard({
                         </div>
                       ) : (
                         <button 
-                          onClick={onGoToSettings}
+                          onClick={() => onGoToSettings?.('platforms')}
                           className="mt-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors"
                         >
                           <Plus size={10} /> Connect Now
@@ -460,6 +469,7 @@ export function Dashboard({
               completedTopics={completedTopics}
               platformStats={platformStats}
               aptitudeScore={aptitudeScore}
+              userData={userData}
             />
           </motion.div>
         )}

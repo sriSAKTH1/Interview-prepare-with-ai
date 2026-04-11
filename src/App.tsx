@@ -359,6 +359,8 @@ export default function App() {
     }
   };
 
+  const [settingsTab, setSettingsTab] = useState<any>(undefined);
+
   const startTest = (config: any) => {
     // Check if config is a string (legacy) or an object
     if (typeof config === 'string') {
@@ -637,7 +639,10 @@ export default function App() {
                   setViewingResult(result);
                   setActiveSection('test');
                 }}
-                onGoToSettings={() => setActiveSection('settings')}
+                onGoToSettings={(tab) => {
+                  setSettingsTab(tab);
+                  setActiveSection('settings');
+                }}
               />
             </motion.div>
           )}
@@ -714,7 +719,11 @@ export default function App() {
                 setThemeMode={setThemeMode}
                 accentColor={accentColor}
                 setAccentColor={setAccentColor}
-                onClose={() => setActiveSection('home')}
+                onClose={() => {
+                  setActiveSection('home');
+                  setSettingsTab(undefined);
+                }}
+                initialTab={settingsTab}
               />
             </motion.div>
           )}

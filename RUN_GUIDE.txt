@@ -1,0 +1,52 @@
+# DSAForge - Execution Guide
+
+This guide provides the step-by-step commands to set up, run, and build the DSAForge application.
+
+## 1. Prerequisites
+Ensure you have the following installed on your system:
+- Node.js (v18 or higher)
+- npm (comes with Node.js)
+
+## 2. Initial Setup
+First, install all the project dependencies:
+```bash
+npm install
+```
+
+## 3. Development Mode
+To start the application in development mode with hot-reloading:
+```bash
+npm run dev
+```
+The application will typically be available at `http://localhost:3000`.
+
+## 4. Building for Production
+To create an optimized production build:
+```bash
+npm run build
+```
+This will generate a `dist/` folder containing the static assets.
+
+## 5. Preview Production Build
+To test the production build locally:
+```bash
+npm run preview
+```
+
+## 6. Linting and Type Checking
+To check the code for errors and ensure type safety:
+```bash
+npm run lint
+```
+
+## 7. Project Structure Overview
+- `src/main.tsx`: Entry point.
+- `src/App.tsx`: Main application logic and routing.
+- `src/components/`: UI components (Dashboard, Settings, Notepad, etc.).
+- `src/firebase.ts`: Firebase configuration and Firestore utilities.
+- `src/services/`: External API integrations (Gemini, Platform Stats).
+
+## 8. Environment Variables
+Ensure you have a `.env` file with the following keys (refer to `.env.example`):
+- `GEMINI_API_KEY`: For AI-powered study plans.
+- Firebase configuration keys (if not using `firebase-applet-config.json`).

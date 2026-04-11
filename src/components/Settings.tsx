@@ -25,12 +25,19 @@ import {
   Info,
   Send,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Code2,
+  Plus,
+  Loader2
 } from 'lucide-react';
+import { auth, db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { LanguageProficiency } from '../types';
 
 type SettingsTab = 
   | 'profile' 
   | 'learning' 
+  | 'languages'
   | 'platforms' 
   | 'notifications' 
   | 'theme' 
@@ -39,7 +46,7 @@ type SettingsTab =
   | 'privacy'
   | 'help';
 
-export function Settings({ user, userData, careerPath, setCareerPath, themeMode, setThemeMode, accentColor, setAccentColor, onClose }: {
+export function Settings({ user, userData, careerPath, setCareerPath, themeMode, setThemeMode, accentColor, setAccentColor, onClose, initialTab }: {
   user: any;
   userData: any;
   careerPath: string;
@@ -49,8 +56,9 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
   accentColor: string;
   setAccentColor: (color: string) => void;
   onClose?: () => void;
+  initialTab?: SettingsTab;
 }) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || 'profile');
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [connectingPlatform, setConnectingPlatform] = useState<any>(null);
@@ -69,6 +77,10 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
   const [localThemeMode, setLocalThemeMode] = useState(themeMode);
   const [localAccentColor, setLocalAccentColor] = useState(accentColor);
   const [localLanguage, setLocalLanguage] = useState(userData?.preferredLanguage || 'JavaScript / TypeScript');
+  const [localLanguages, setLocalLanguages] = useState<LanguageProficiency[]>(userData?.languages || [
+    { language: 'JavaScript', level: 'Intermediate' },
+    { language: 'Python', level: 'Beginner' }
+  ]);
   const [localDailyGoal, setLocalDailyGoal] = useState(userData?.dailyGoal || 60);
   
   const [platforms, setPlatforms] = useState(() => {
@@ -145,6 +157,7 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
           bio: localBio,
           careerPath: localCareerPath,
           preferredLanguage: localLanguage,
+          languages: localLanguages,
           dailyGoal: localDailyGoal,
           accentColor: localAccentColor,
           themeMode: localThemeMode,
@@ -241,6 +254,7 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'learning', label: 'Learning Preferences', icon: Book },
+    { id: 'languages', label: 'Language Mastery', icon: Code2 },
     { id: 'platforms', label: 'Coding Platform Integration', icon: Link2 },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'theme', label: 'Theme & UI', icon: Palette },
@@ -457,6 +471,79 @@ export function Settings({ user, userData, careerPath, setCareerPath, themeMode,
                             {mins}m
                           </button>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'languages' && (
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-bold dark:text-white">Language Mastery</h3>
+                    <button 
+                      onClick={() => setLocalLanguages([...localLanguages, { language: 'New Language', level: 'Beginner' }])}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+                    >
+                      <Plus size={16} /> Add Language
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {localLanguages.map((lang, idx) => (
+                      <div key={idx} className="flex items-center gap-4 p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div className="flex-1 space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Language</label>
+                          <select 
+                            value={lang.language}
+                            onChange={(e) => {
+                              const newLangs = [...localLanguages];
+                              newLangs[idx].language = e.target.value;
+                              setLocalLanguages(newLangs);
+                            }}
+                            className="w-full bg-white dark:bg-slate-900 border-none rounded-xl text-sm font-bold px-4 py-2 dark:text-white"
+                          >
+                            {['JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C', 'Go', 'Rust', 'Swift', 'Kotlin', 'SQL', 'PHP', 'Ruby'].map(l => (
+                              <option key={l} value={l}>{l}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Proficiency</label>
+                          <select 
+                            value={lang.level}
+                            onChange={(e) => {
+                              const newLangs = [...localLanguages];
+                              newLangs[idx].level = e.target.value as any;
+                              setLocalLanguages(newLangs);
+                            }}
+                            className="w-full bg-white dark:bg-slate-900 border-none rounded-xl text-sm font-bold px-4 py-2 dark:text-white"
+                          >
+                            {['Beginner', 'Intermediate', 'Advanced', 'Expert'].map(l => (
+                              <option key={l} value={l}>{l}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <button 
+                          onClick={() => setLocalLanguages(localLanguages.filter((_, i) => i !== idx))}
+                          className="mt-6 p-2 text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl border border-indigo-100 dark:border-indigo-800/50">
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">
+                        <Zap size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 dark:text-white">Why this matters?</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          Your language proficiency directly impacts your **Interview Readiness Score**. Mastering multiple languages makes you a more versatile candidate for product companies.
+                        </p>
                       </div>
                     </div>
                   </div>
